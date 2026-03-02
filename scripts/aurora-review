@@ -1,0 +1,80 @@
+#!/usr/bin/env python3
+import sys
+import json
+import requests
+import argparse
+from datetime import datetime
+
+def main():
+    parser = argparse.ArgumentParser(description="Aurora-X Review & Deployment Tool")
+    subparsers = parser.add_subparsers(dest="command", help="Available commands")
+
+    # List Command
+    subparsers.add_parser("list", help="List all pending review tickets")
+
+    # Inspect Command
+    inspect_parser = subparsers.add_parser("inspect", help="Inspect a specific review ticket")
+    inspect_parser.add_argument("id", help="Ticket ID to inspect")
+
+    # Approve Command
+    approve_parser = subparsers.add_parser("approve", help="Approve and push a ticket to production")
+    approve_parser.add_argument("id", help="Ticket ID to approve")
+
+    # Global options
+    parser.add_argument("--api-url", default="http://localhost:8000", help="Aurora-X API URL")
+
+    args = parser.parse_args()
+
+    if not args.command:
+        parser.print_help()
+        return
+
+    try:
+        if args.command == "list":
+            response = requests.get(f"{args.api_url}/api/security/reviews")
+            response.raise_for_status()
+            tickets = response.json().get("tickets", [])
+            print(f"{'ID':<10} | {'STATUS':<15} | {'REQUESTER':<10} | {'TIME':<20}")
+            print("-" * 65)
+            for t in tickets:
+                time_str = datetime.fromtimestamp(t['timestamp']).strftime('%Y-%m-%d %H:%M:%S')
+                print(f"{t['id']:<10} | {t['status']:<15} | {t['tier']:<10} | {time_str}")
+
+        elif args.command == "inspect":
+            response = requests.get(f"{args.api_url}/api/security/reviews/{args.id}")
+            response.raise_for_status()
+            t = response.json()
+            print(f"\n[INSPECTING TICKET: {t['id']}]")
+            print(f"Status:    {t['status']}")
+            print(f"Requester: {t['tier'].upper()} ({t['requester']})")
+            print(f"Time:      {datetime.fromtimestamp(t['timestamp']).strftime('%Y-%m-%d %H:%M:%S')}")
+            print("\nPROPOSED CHANGES:")
+            print(json.dumps(t['changes'], indent=4))
+            if t['feedback']:
+                print("\nFEEDBACK LOG:")
+                for f in t['feedback']:
+                    print(f"- [{f['author'].upper()}] {f['text']}")
+
+        elif args.command == "approve":
+            print(f"Finalizing verification for Ticket {args.id}...")
+            # Verify server connection
+            requests.get(f"{args.api_url}/api/status").raise_for_status()
+            print("[OK] Server connection verified.")
+            
+            # Approve and promote
+            response = requests.post(f"{args.api_url}/api/security/reviews/{args.id}/approve")
+            response.raise_for_status()
+            result = response.json()
+            
+            if result.get("status") == "SUCCESS":
+                print(f"[OK] TICKET {args.id} APPROVED AND PUSHED TO PRODUCTION.")
+                print("[INFO] Deployment status: ONLINE")
+            else:
+                print(f"[FAIL] Promotion failed: {result.get('message')}")
+
+    except Exception as e:
+        print(f"[ERROR] Error: {e}")
+        sys.exit(1)
+
+if __name__ == "__main__":
+    main()

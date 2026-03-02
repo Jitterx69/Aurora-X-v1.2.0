@@ -1,0 +1,813 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AURORA-X | Operation Command Center</title>
+    <link rel="stylesheet" href="css/aurora.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700;900&family=JetBrains+Mono:wght@400;700&display=swap"
+        rel="stylesheet">
+</head>
+
+<body>
+    <!-- Sidebar Navigation -->
+    <aside id="sidebar">
+        <div class="brand">
+            <h1>AURORA-X</h1>
+            <span>DEEP TRUST PLATFORM</span>
+        </div>
+        <nav>
+            <ul>
+                <li class="nav-item active" data-view="tactical">Tactical Hub</li>
+                <li class="nav-item" data-view="twin">Digital Twin</li>
+                <li class="nav-item" data-view="faults">Fault Analysis</li>
+                <li class="nav-item" data-view="log">Event Log</li>
+                <li class="nav-item" data-view="terminal">Command Terminal</li>
+                <li class="nav-item" data-view="security">Security Audit</li>
+                <li class="nav-item" data-view="parameters">System Parameters</li>
+                <li class="nav-item" data-view="reviews">Review Center</li>
+                <li class="nav-item" data-view="settings">Settings</li>
+            </ul>
+        </nav>
+        <div class="sidebar-footer">
+            V1.2.0-STABLE<br>
+            SECURE BOUNDARY: ACTIVE
+        </div>
+    </aside>
+
+    <!-- Main Content -->
+    <main id="app-main">
+        <header>
+            <div class="view-title" id="header-title">TACTICAL HUB</div>
+            <div class="system-status">
+                <div class="status-indicator">
+                    <div class="dot live" id="status-dot"></div>
+                    <span id="status-text">LIVE STREAM</span>
+                </div>
+                <div class="status-indicator">
+                    <span>UPTIME:</span>
+                    <span id="uptime-value">00:00:00</span>
+                </div>
+            </div>
+        </header>
+
+        <!-- [VIEW] Tactical Hub -->
+        <div id="view-tactical" class="view-container active">
+            <!-- KPI Cards Row -->
+            <div class="dashboard-grid">
+                <div class="grid-card">
+                    <div class="card-label">PRIMARY LOAD</div>
+                    <div class="card-value" id="val-load">0.00<span class="card-unit">%</span></div>
+                    <div class="monochrome-bar">
+                        <div class="monochrome-bar-fill" id="bar-load" style="width: 0%"></div>
+                    </div>
+                </div>
+                <div class="grid-card">
+                    <div class="card-label">THERMAL STATUS</div>
+                    <div class="card-value" id="val-temp">0.0<span class="card-unit">°C</span></div>
+                    <div class="monochrome-bar">
+                        <div class="monochrome-bar-fill" id="bar-temp" style="width: 0%"></div>
+                    </div>
+                </div>
+                <div class="grid-card">
+                    <div class="card-label">RUL ESTIMATE</div>
+                    <div class="card-value" id="val-rul">—<span class="card-unit">HRS</span></div>
+                    <div class="monochrome-bar">
+                        <div class="monochrome-bar-fill" id="bar-rul" style="width: 0%"></div>
+                    </div>
+                </div>
+                <div class="grid-card">
+                    <div class="card-label">SYSTEM HEALTH</div>
+                    <div class="card-value" id="val-health">—<span class="card-unit">%</span></div>
+                    <div class="monochrome-bar">
+                        <div class="monochrome-bar-fill" id="bar-health" style="width: 0%"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- State Vector + Fault Ensemble -->
+            <div class="tactical-layout" style="margin-top: 24px;">
+                <div class="panel">
+                    <div class="panel-header">
+                        <div class="panel-title">FUSED STATE VECTOR</div>
+                        <div class="system-status">EKF/UKF ACTIVE</div>
+                    </div>
+                    <div class="panel-body">
+                        <div id="state-vector-display"
+                            style="font-family: var(--font-mono); font-size: 11px; line-height: 1.8;">
+                            [WAITING FOR TELEMETRY]
+                        </div>
+                    </div>
+                </div>
+                <div class="panel">
+                    <div class="panel-header">
+                        <div class="panel-title">FAULT ENSEMBLE</div>
+                        <div id="severity-badge" class="severity-badge severity-nominal">NOMINAL</div>
+                    </div>
+                    <div class="panel-body">
+                        <div id="fault-distribution" style="display: flex; flex-direction: column; gap: 8px;"></div>
+                        <div style="margin-top: 16px; border-top: 1px solid var(--border-dim); padding-top: 12px;">
+                            <div class="card-label" style="margin-bottom: 8px;">CONFIDENCE</div>
+                            <div id="fault-confidence"
+                                style="font-family: var(--font-mono); font-size: 11px; line-height: 1.6;"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Digital Twin + RL Safety -->
+            <div class="tactical-layout" style="margin-top: 24px;">
+                <div class="panel">
+                    <div class="panel-header">
+                        <div class="panel-title">DIGITAL TWIN</div>
+                        <div class="system-status" id="twin-status">SYNCED</div>
+                    </div>
+                    <div class="panel-body">
+                        <div class="twin-stats-grid">
+                            <div class="twin-stat">
+                                <div class="twin-stat-label">HEALTH SCORE</div>
+                                <div class="twin-stat-value" id="twin-health">—</div>
+                            </div>
+                            <div class="twin-stat">
+                                <div class="twin-stat-label">SURVIVAL PROB</div>
+                                <div class="twin-stat-value" id="twin-survival">—</div>
+                            </div>
+                            <div class="twin-stat">
+                                <div class="twin-stat-label">DEGRADATION</div>
+                                <div class="twin-stat-value" id="twin-degradation">—</div>
+                            </div>
+                            <div class="twin-stat">
+                                <div class="twin-stat-label">OPERATING CYCLES</div>
+                                <div class="twin-stat-value" id="twin-cycles">—</div>
+                            </div>
+                            <div class="twin-stat">
+                                <div class="twin-stat-label">RUL MEAN</div>
+                                <div class="twin-stat-value" id="twin-rul-mean">—</div>
+                            </div>
+                            <div class="twin-stat">
+                                <div class="twin-stat-label">RUL CONFIDENCE 90%</div>
+                                <div class="twin-stat-value" id="twin-rul-ci">—</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="panel">
+                    <div class="panel-header">
+                        <div class="panel-title">RL SAFETY CONTROLLER</div>
+                    </div>
+                    <div class="panel-body">
+                        <div class="twin-stats-grid">
+                            <div class="twin-stat">
+                                <div class="twin-stat-label">TOTAL CHECKS</div>
+                                <div class="twin-stat-value" id="safety-checks">0</div>
+                            </div>
+                            <div class="twin-stat">
+                                <div class="twin-stat-label">VIOLATIONS</div>
+                                <div class="twin-stat-value" id="safety-violations">0</div>
+                            </div>
+                            <div class="twin-stat">
+                                <div class="twin-stat-label">BARRIER ACTIVATIONS</div>
+                                <div class="twin-stat-value" id="safety-barriers">0</div>
+                            </div>
+                            <div class="twin-stat">
+                                <div class="twin-stat-label">SAFETY RATE</div>
+                                <div class="twin-stat-value" id="safety-rate">100%</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Platform Metrics Strip -->
+            <div class="metrics-strip" style="margin-top: 24px;">
+                <div class="metric-item">
+                    <span class="metric-label">EVENTS/SEC</span>
+                    <span class="metric-value" id="metric-eps">0.0</span>
+                </div>
+                <div class="metric-item">
+                    <span class="metric-label">TOTAL PROCESSED</span>
+                    <span class="metric-value" id="metric-total">0</span>
+                </div>
+                <div class="metric-item">
+                    <span class="metric-label">GATEWAY THROUGHPUT</span>
+                    <span class="metric-value" id="metric-gateway">0</span>
+                </div>
+                <div class="metric-item">
+                    <span class="metric-label">EVENT LOG SIZE</span>
+                    <span class="metric-value" id="metric-log">0</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- [VIEW] Command Terminal -->
+        <div id="view-terminal" class="view-container">
+            <div class="panel" style="border:none;">
+                <div class="terminal-area" id="terminal-output">
+                    <div class="terminal-line">AURORA-X OPERATION CENTER INITIALIZED.</div>
+                    <div class="terminal-line">ESTABLISHING SECURE CONNECTION TO ML/RL SERVICES...</div>
+                </div>
+                <div class="terminal-resizer" id="terminal-resizer"></div>
+                <div class="terminal-input-row">
+                    <span id="terminal-prompt">USER@AURORA:~$</span>
+                    <input type="text" id="terminal-input" placeholder="Enter operational command..." autofocus>
+                </div>
+            </div>
+            <div style="margin-top: 24px; display: flex; gap: 12px;">
+                <button class="btn-glass" onclick="sendQuickCommand('reboot')">SOFT REBOOT</button>
+                <button class="btn-glass" onclick="sendQuickCommand('reset_rl')">RESET RL TRAINER</button>
+                <button class="btn-glass" onclick="sendQuickCommand('clear_cache')">PURGE BROADCAST CACHE</button>
+                <button class="btn-glass" style="border-color: rgba(255, 50, 50, 0.3);"
+                    onclick="sendQuickCommand('shutdown')">EMERGENCY SHUTDOWN</button>
+            </div>
+        </div>
+
+        <!-- System Offline Overlay -->
+        <div id="offline-overlay" class="offline-overlay">
+            <div class="offline-content">
+                <div class="offline-icon"
+                    style="color: #f44336; border: 2px solid #f44336; width: 40px; height: 40px; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 20px;">
+                    !</div>
+                <h2>SYSTEM OFFLINE</h2>
+                <p>The Aurora-X platform process has been terminated.</p>
+                <div class="restart-box">
+                    <span>To restart, execute the following in your terminal:</span>
+                    <code>python aurora_x/api/server.py</code>
+                </div>
+                <button class="btn-glass" onclick="location.reload()">RETRY CONNECTION</button>
+            </div>
+        </div>
+
+        <!-- [VIEW] Security Audit -->
+        <div id="view-security" class="view-container">
+            <div class="panel">
+                <div class="panel-header">
+                    <div class="panel-title">BLAKE3/AURORA-HE SECURE TRANSACTION LOG</div>
+                    <button onclick="refreshAudit()">REFRESH AUDIT</button>
+                </div>
+                <div class="panel-body" style="padding:0;">
+                    <table id="audit-table">
+                        <thead>
+                            <tr>
+                                <th>Timestamp</th>
+                                <th>Request Hash (BLAKE3)</th>
+                                <th>Method</th>
+                                <th>Status</th>
+                                <th>Latency</th>
+                            </tr>
+                        </thead>
+                        <tbody id="audit-body">
+                            <!-- Rows injected by JS -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- [VIEW] System Parameters -->
+        <div id="view-parameters" class="view-container">
+
+            <!-- Row 1: RL Training Status + Safety Barrier Monitor -->
+            <div class="tactical-layout">
+                <div class="panel">
+                    <div class="panel-header">
+                        <div class="panel-title">RL TRAINING STATUS</div>
+                        <div id="rl-trained-badge" class="severity-badge severity-minor">UNTRAINED</div>
+                    </div>
+                    <div class="panel-body">
+                        <div class="twin-stats-grid">
+                            <div class="twin-stat">
+                                <div class="twin-stat-label">ALGORITHM</div>
+                                <div class="twin-stat-value" id="rl-algorithm" style="font-size: 14px;">—</div>
+                            </div>
+                            <div class="twin-stat">
+                                <div class="twin-stat-label">EPISODES</div>
+                                <div class="twin-stat-value" id="rl-episodes">0</div>
+                            </div>
+                            <div class="twin-stat">
+                                <div class="twin-stat-label">TOTAL STEPS</div>
+                                <div class="twin-stat-value" id="rl-steps">0</div>
+                            </div>
+                            <div class="twin-stat">
+                                <div class="twin-stat-label">BEST REWARD</div>
+                                <div class="twin-stat-value" id="rl-best-reward">—</div>
+                            </div>
+                            <div class="twin-stat">
+                                <div class="twin-stat-label">AVG REWARD (LAST 50)</div>
+                                <div class="twin-stat-value" id="rl-avg-reward">0.0</div>
+                            </div>
+                            <div class="twin-stat">
+                                <div class="twin-stat-label">REPLAY BUFFER</div>
+                                <div class="twin-stat-value" id="rl-buffer">0</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="panel">
+                    <div class="panel-header">
+                        <div class="panel-title">SAFETY BARRIER MONITOR</div>
+                        <div class="system-status">CBF ACTIVE</div>
+                    </div>
+                    <div class="panel-body">
+                        <div id="barrier-container" style="display: flex; flex-direction: column; gap: 14px;">
+                            <!-- Barrier rows injected by JS -->
+                            <div class="barrier-row">
+                                <div class="barrier-header">
+                                    <span class="barrier-name">TEMPERATURE</span>
+                                    <span class="barrier-indicator barrier-safe" id="barrier-temp-status">SAFE</span>
+                                </div>
+                                <div class="barrier-values">
+                                    <span>CURRENT: <strong id="barrier-temp-current">0.0</strong></span>
+                                    <span>LIMIT: <strong id="barrier-temp-limit">450.0</strong></span>
+                                </div>
+                                <div class="monochrome-bar" style="height: 6px;">
+                                    <div class="monochrome-bar-fill" id="barrier-temp-margin"
+                                        style="width: 0%; background: #4caf50;"></div>
+                                </div>
+                            </div>
+                            <div class="barrier-row">
+                                <div class="barrier-header">
+                                    <span class="barrier-name">VIBRATION</span>
+                                    <span class="barrier-indicator barrier-safe" id="barrier-vib-status">SAFE</span>
+                                </div>
+                                <div class="barrier-values">
+                                    <span>CURRENT: <strong id="barrier-vib-current">0.0</strong></span>
+                                    <span>LIMIT: <strong id="barrier-vib-limit">15.0</strong></span>
+                                </div>
+                                <div class="monochrome-bar" style="height: 6px;">
+                                    <div class="monochrome-bar-fill" id="barrier-vib-margin"
+                                        style="width: 0%; background: #4caf50;"></div>
+                                </div>
+                            </div>
+                            <div class="barrier-row">
+                                <div class="barrier-header">
+                                    <span class="barrier-name">PRESSURE</span>
+                                    <span class="barrier-indicator barrier-safe" id="barrier-pres-status">SAFE</span>
+                                </div>
+                                <div class="barrier-values">
+                                    <span>CURRENT: <strong id="barrier-pres-current">0.0</strong></span>
+                                    <span>LIMIT: <strong id="barrier-pres-limit">120.0</strong></span>
+                                </div>
+                                <div class="monochrome-bar" style="height: 6px;">
+                                    <div class="monochrome-bar-fill" id="barrier-pres-margin"
+                                        style="width: 0%; background: #4caf50;"></div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Row 2: Fault Injection + RL Actuator Config -->
+            <div class="tactical-layout" style="margin-top: 24px;">
+                <div class="panel">
+                    <div class="panel-header">
+                        <div class="panel-title">FAULT INJECTION CONTROL</div>
+                    </div>
+                    <div class="panel-body">
+                        <div style="display: flex; flex-direction: column; gap: 16px;">
+                            <div>
+                                <label class="card-label">TARGET ASSET:</label>
+                                <select class="input-field" id="fi-asset" style="width: 100%;">
+                                    <option value="pump-001">PUMP-001</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label class="card-label">FAULT TYPE:</label>
+                                <select class="input-field" id="fi-type" style="width: 100%;">
+                                    <option value="bearing_wear">BEARING WEAR</option>
+                                    <option value="misalignment">MISALIGNMENT</option>
+                                    <option value="cavitation">CAVITATION</option>
+                                    <option value="overheating">OVERHEATING</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label class="card-label">SEVERITY: <span id="fi-severity-val">50%</span></label>
+                                <input type="range" class="param-slider" id="fi-severity" min="0" max="100" value="50"
+                                    style="width: 100%;">
+                            </div>
+                            <div style="display: flex; gap: 8px;">
+                                <button class="btn-glass" id="btn-inject-fault" onclick="window.commander.injectFault()"
+                                    style="flex: 1;">INJECT FAULT</button>
+                                <button class="btn-glass" id="btn-clear-faults" onclick="window.commander.clearFaults()"
+                                    style="flex: 1;">CLEAR ALL FAULTS</button>
+                            </div>
+                            <div id="fi-status"
+                                style="font-family: var(--font-mono); font-size: 11px; color: rgba(255,255,255,0.4); min-height: 18px;">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="panel">
+                    <div class="panel-header">
+                        <div class="panel-title">RL ACTUATOR CONFIG</div>
+                    </div>
+                    <div class="panel-body">
+                        <div style="display: flex; flex-direction: column; gap: 16px;">
+                            <div>
+                                <label class="card-label">AUTONOMY LEVEL:</label>
+                                <select class="input-field" id="param-autonomy" style="width: 100%;">
+                                    <option value="full">FULL AUTONOMY (CLOSED LOOP)</option>
+                                    <option value="advisory">ADVISORY (HUMAN CONFIRMATION)</option>
+                                    <option value="manual">MANUAL OVERRIDE ONLY</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label class="card-label">SAFETY THRESHOLD (γ): <span
+                                        id="param-gamma-val">0.95</span></label>
+                                <input type="range" class="param-slider" id="param-gamma" min="0" max="100" value="95"
+                                    style="width: 100%;">
+                            </div>
+                            <div>
+                                <label class="card-label">EXPLORATION RATE (ε): <span
+                                        id="param-epsilon-val">0.10</span></label>
+                                <input type="range" class="param-slider" id="param-epsilon" min="0" max="100" value="10"
+                                    style="width: 100%;">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Row 3: Platform Config -->
+            <div class="panel" style="margin-top: 24px;">
+                <div class="panel-header">
+                    <div class="panel-title">PLATFORM CONFIGURATION</div>
+                </div>
+                <div class="panel-body">
+                    <div class="config-grid">
+                        <div class="config-item">
+                            <span class="config-key">PLATFORM</span>
+                            <span class="config-val">AURORA-X v1.2.0-STABLE</span>
+                        </div>
+                        <div class="config-item">
+                            <span class="config-key">ESTIMATION</span>
+                            <span class="config-val">EKF/UKF FUSION (8-dim state)</span>
+                        </div>
+                        <div class="config-item">
+                            <span class="config-key">FAULT ENGINE</span>
+                            <span class="config-val">RESIDUAL + ML + TEMPORAL (LSTM)</span>
+                        </div>
+                        <div class="config-item">
+                            <span class="config-key">DIGITAL TWIN</span>
+                            <span class="config-val">BAYESIAN RUL (1000 particles)</span>
+                        </div>
+                        <div class="config-item">
+                            <span class="config-key">RL ALGORITHM</span>
+                            <span class="config-val" id="cfg-rl-algo">CPPO (Constrained PPO)</span>
+                        </div>
+                        <div class="config-item">
+                            <span class="config-key">SAFETY</span>
+                            <span class="config-val">3× CBF (Temp / Vib / Pressure)</span>
+                        </div>
+                        <div class="config-item">
+                            <span class="config-key">ENCRYPTION</span>
+                            <span class="config-val">AES-256-GCM + HMAC-SHA256</span>
+                        </div>
+                        <div class="config-item">
+                            <span class="config-key">RUST ACCEL</span>
+                            <span class="config-val" id="cfg-rust-status">CHECKING...</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- [VIEW] Digital Twin Deep Dive -->
+        <div id="view-twin" class="view-container">
+            <div class="tactical-layout">
+                <div class="panel">
+                    <div class="panel-header">
+                        <div class="panel-title">TWIN HEALTH GAUGE <span id="twin-mode-badge" class="system-status"
+                                style="margin-left: 8px; font-size: 10px; background: rgba(0, 255, 0, 0.1); color: #4caf50; padding: 2px 6px; border-radius: 4px;">REALTIME</span>
+                        </div>
+                        <select class="input-field" id="twin-asset-selector" style="font-size: 11px; padding: 2px 8px;">
+                            <option value="asset-turbine-001">TURBINE-001</option>
+                            <option value="asset-pump-002">PUMP-002</option>
+                        </select>
+                    </div>
+                    <div class="panel-body"
+                        style="display: flex; flex-direction: column; align-items: center; padding: 40px 20px;">
+                        <div class="health-gauge-container">
+                            <svg viewBox="0 0 100 100" class="health-gauge">
+                                <circle cx="50" cy="50" r="45" class="gauge-bg"></circle>
+                                <circle cx="50" cy="50" r="45" class="gauge-fill" id="twin-gauge-fill"
+                                    style="stroke-dasharray: 0, 283;"></circle>
+                            </svg>
+                            <div class="gauge-text">
+                                <div class="gauge-percent" id="twin-gauge-val">0%</div>
+                                <div class="gauge-label">HEALTH</div>
+                            </div>
+                        </div>
+                        <div class="twin-stats-grid" style="width: 100%; margin-top: 30px;">
+                            <div class="twin-stat">
+                                <div class="twin-stat-label">SURVIVAL</div>
+                                <div class="twin-stat-value" id="twin-deep-survival">0%</div>
+                            </div>
+                            <div class="twin-stat">
+                                <div class="twin-stat-label">DEGRADATION</div>
+                                <div class="twin-stat-value" id="twin-deep-degradation">0.0</div>
+                            </div>
+                            <div class="twin-stat">
+                                <div class="twin-stat-label">RUL ESTIMATE</div>
+                                <div class="twin-stat-value" id="twin-deep-rul">— HRS</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="panel">
+                    <div class="panel-header">
+                        <div class="panel-title">PHYSICS STATE VECTOR</div>
+                        <div class="system-status">8-DIMENSIONAL</div>
+                    </div>
+                    <div class="panel-body">
+                        <div id="twin-physics-grid" class="physics-grid">
+                            <!-- Injected by JS -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="panel" style="margin-top: 24px;">
+                <div class="panel-header">
+                    <div class="panel-title">DEGRADATION TREND (WEIBULL MODEL)</div>
+                </div>
+                <div class="panel-body">
+                    <div id="twin-trend-canvas"
+                        style="height: 180px; display: flex; align-items: flex-end; gap: 4px; border-left: 1px solid var(--border-dim); border-bottom: 1px solid var(--border-dim); padding: 10px;">
+                        <!-- Placeholder for trend bars -->
+                        <div style="flex:1; height: 10%; background: var(--aurora-blue); opacity: 0.2"></div>
+                        <div style="flex:1; height: 15%; background: var(--aurora-blue); opacity: 0.3"></div>
+                        <div style="flex:1; height: 25%; background: var(--aurora-blue); opacity: 0.4"></div>
+                        <div style="flex:1; height: 40%; background: var(--aurora-blue); opacity: 0.5"></div>
+                    </div>
+                    <div
+                        style="display: flex; justify-content: space-between; font-size: 10px; color: var(--text-dim); margin-top: 8px;">
+                        <span>T-100H</span>
+                        <span>NOW</span>
+                        <span>EST. END OF LIFE</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- [VIEW] Fault Analysis -->
+        <div id="view-faults" class="view-container">
+            <div class="fault-analysis-grid">
+                <!-- Left Column: Timeline -->
+                <div class="panel">
+                    <div class="panel-header">
+                        <div class="panel-title">OPERATIONAL FAULT TIMELINE</div>
+                        <div class="system-status" id="fault-count-badge">0 ACTIVE SIGNATURES</div>
+                    </div>
+                    <div class="panel-body">
+                        <div id="fault-timeline" class="fault-timeline" style="height: 600px;">
+                            <!-- Injected by JS -->
+                            <div class="timeline-empty">NO FAULTS DETECTED IN CURRENT WINDOW</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Right Column: Diagnostics & Recommendations -->
+                <div class="diagnostic-sidebar">
+                    <div class="diagnostic-card">
+                        <div class="diagnostic-label">ENSEMBLE BREAKDOWN</div>
+                        <div class="ensemble-chart">
+                            <div class="ensemble-row">
+                                <div class="card-label">RESIDUAL ANALYZER</div>
+                                <div class="monochrome-bar">
+                                    <div class="monochrome-bar-fill" id="bar-res-weight"
+                                        style="width: 20%; background: #4caf50"></div>
+                                </div>
+                            </div>
+                            <div class="ensemble-row">
+                                <div class="card-label">ML CLASSIFIER</div>
+                                <div class="monochrome-bar">
+                                    <div class="monochrome-bar-fill" id="bar-ml-weight"
+                                        style="width: 30%; background: #2196f3"></div>
+                                </div>
+                            </div>
+                            <div class="ensemble-row">
+                                <div class="card-label">TEMPORAL LSTM</div>
+                                <div class="monochrome-bar">
+                                    <div class="monochrome-bar-fill" id="bar-temp-weight"
+                                        style="width: 50%; background: #9c27b0"></div>
+                                </div>
+                            </div>
+                        </div>
+                        <div id="severity-dist-bars"
+                            style="height: 40px; display: flex; align-items: flex-end; gap: 4px; margin-top: 16px;">
+                            <!-- Bars injected by JS -->
+                        </div>
+                    </div>
+
+                    <div class="diagnostic-card">
+                        <div class="diagnostic-label">ROOT CAUSE ATTRIBUTION</div>
+                        <div id="fault-attribution-list">
+                            <div class="timeline-empty" style="font-size: 10px;">PENDING DIAGNOSIS...</div>
+                        </div>
+                    </div>
+
+                    <div class="diagnostic-card">
+                        <div class="diagnostic-label">MAINTENANCE ADVISORY</div>
+                        <div id="fault-recommendations">
+                            <div class="timeline-empty" style="font-size: 10px;">SYSTEM STATUS: NOMINAL</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- [VIEW] Event Log -->
+        <div id="view-log" class="view-container">
+            <div class="tactical-layout">
+                <div class="panel" style="flex: 3;">
+                    <div class="panel-header">
+                        <div class="panel-title">LIVE EVENT STREAM</div>
+                        <div style="display: flex; gap: 8px;">
+                            <button class="btn-glass" id="btn-pause-log"
+                                style="font-size: 10px; padding: 2px 8px;">PAUSE</button>
+                            <button class="btn-glass" id="btn-clear-log"
+                                style="font-size: 10px; padding: 2px 8px;">CLEAR</button>
+                        </div>
+                    </div>
+                    <div class="panel-body" style="padding: 0;">
+                        <div id="event-stream" class="event-stream-container">
+                            <!-- Injected by JS -->
+                        </div>
+                    </div>
+                </div>
+                <div class="panel">
+                    <div class="panel-header">
+                        <div class="panel-title">PIPELINE STATS</div>
+                    </div>
+                    <div class="panel-body">
+                        <div class="twin-stats-grid">
+                            <div class="twin-stat">
+                                <div class="twin-stat-label">REJECTION RATE</div>
+                                <div class="twin-stat-value" id="pipe-rejection">0.0%</div>
+                            </div>
+                            <div class="twin-stat">
+                                <div class="twin-stat-label">COMPRESSION</div>
+                                <div class="twin-stat-value" id="pipe-compression">LZ4</div>
+                            </div>
+                            <div class="twin-stat">
+                                <div class="twin-stat-label">WINDOW SIZE</div>
+                                <div class="twin-stat-value" id="pipe-window">256</div>
+                            </div>
+                            <div class="twin-stat">
+                                <div class="twin-stat-label">CACHE OCCUPANCY</div>
+                                <div class="twin-stat-value" id="pipe-cache">0.0%</div>
+                            </div>
+                        </div>
+                        <div style="margin-top: 24px; border-top: 1px solid var(--border-dim); padding-top: 16px;">
+                            <div class="card-label">SENSOR HEALTH MAP</div>
+                            <div id="sensor-health-grid" class="sensor-health-grid">
+                                <!-- Injected by JS -->
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- [VIEW] Review Center -->
+        <div id="view-reviews" class="view-container">
+            <div class="panel">
+                <div class="panel-header">
+                    <div class="panel-title">ENGINEERING REVIEW QUEUE</div>
+                    <div class="system-status">ACTIVE REVIEWS</div>
+                </div>
+                <div class="panel-body">
+                    <div id="reviews-list-container" class="settings-form">
+                        <div class="loading-spinner">SYNCHRONIZING REVIEWS...</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- [VIEW] Settings -->
+        <div id="view-settings" class="view-container">
+            <div class="settings-layout">
+                <div class="settings-sidebar">
+                    <div class="settings-nav-item active" data-section="platform">Platform</div>
+                    <div class="settings-nav-item" data-section="ingestion">Ingestion</div>
+                    <div class="settings-nav-item" data-section="pipeline">Pipeline</div>
+                    <div class="settings-nav-item" data-section="estimation">Estimation</div>
+                    <div class="settings-nav-item" data-section="digital_twin">Digital Twin</div>
+                    <div class="settings-nav-item" data-section="fault_detection">Fault Detection</div>
+                    <div class="settings-nav-item" data-section="rl">Reinforcement Learning</div>
+                    <div class="settings-nav-item" data-section="safety">Safety Controller</div>
+                    <div class="settings-nav-item" data-section="storage">Storage</div>
+                    <div class="settings-nav-item" data-section="api">API & Web</div>
+                    <div style="margin: 10px 0; border-top: 1px solid var(--border-dim);"></div>
+                    <div class="settings-nav-item" data-section="security">Access Activation</div>
+                </div>
+                <div class="settings-content">
+                    <div id="settings-section-title" class="panel-title" style="margin-bottom: 20px;">PLATFORM SETTINGS
+                    </div>
+                    <div id="settings-form-container" class="settings-form">
+                        <!-- Controls injected by JS -->
+                        <div class="loading-spinner">FETCHING PLATFORM CONFIGURATION...</div>
+                    </div>
+                    <div class="settings-footer"
+                        style="margin-top: 30px; border-top: 1px solid var(--border-dim); padding-top: 20px; display: flex; justify-content: flex-end; gap: 12px;">
+                        <button class="btn-glass" id="btn-reset-settings">REVERT CHANGES</button>
+                        <button class="btn-glass" id="btn-save-settings"
+                            style="background: rgba(0, 150, 255, 0.1); border-color: var(--aurora-blue);">APPLY
+                            CONFIGURATION</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <!-- Emergency Alert Overlay -->
+        <div id="emergency-overlay" class="emergency-alert" style="display: none;">
+            <div class="emergency-content">
+                <h1 class="emergency-title">SYSTEM HALTED</h1>
+                <p class="emergency-subtitle">EMERGENCY MODE ACTIVE — LOCAL HIVE TERMINATED</p>
+                <div class="emergency-icon"
+                    style="border: 4px solid white; width: 60px; height: 60px; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 30px; font-size: 32px; font-weight: 900;">
+                    !</div>
+                <p>Processing loops have been force-stopped to prevent unintentional bug propagation.</p>
+                <button class="btn-glass" onclick="location.reload()"
+                    style="margin-top: 20px; color: white; border-color: white;">RETRY INITIALIZATION</button>
+            </div>
+        </div>
+    </main>
+
+    <!-- Biometric Verification Modal -->
+    <div id="biometric-modal" class="biometric-modal" style="display: none;">
+        <div class="biometric-content">
+            <div class="biometric-header">BIOMETRIC VERIFICATION REQUIRED</div>
+            <div class="biometric-scanner">
+                <div class="scanner-line"></div>
+                <div class="fingerprint-icon" style="font-size: 24px; opacity: 0.5;">ID</div>
+            </div>
+            <div id="biometric-progress" class="biometric-status">PLACE FINGER ON SENSOR</div>
+            <p style="font-size: 11px; color: var(--text-dim); margin-top: 15px;">Scanning for authorized biometric
+                signature matches...</p>
+            <button class="btn-glass" id="btn-mock-scan" onclick="window.commander.verifyBiometric()"
+                style="margin-top: 20px; width: 100%;">START SCAN</button>
+        </div>
+    </div>
+
+    <!-- Review Center Modal -->
+    <div id="review-modal" class="biometric-modal" style="display: none;">
+        <div class="biometric-content" style="width: 500px; text-align: left;">
+            <div class="biometric-header">ENGINEERING REVIEW TICKET: <span id="rev-ticket-id">XXXX</span></div>
+            <div style="margin-bottom: 20px;">
+                <div class="meta-row">
+                    <span class="meta-label">REQUESTER:</span>
+                    <span id="rev-requester" class="meta-value"></span>
+                </div>
+                <div class="meta-row">
+                    <span class="meta-label">STATUS:</span>
+                    <span id="rev-status" class="meta-value" style="color: #ffa726;"></span>
+                </div>
+            </div>
+
+            <div class="card-label">PROPOSED CHANGES</div>
+            <div id="rev-changes-diff" class="event-stream-container"
+                style="height: 120px; margin-bottom: 20px; font-size: 10px; background: rgba(0,0,0,0.5); padding: 10px;">
+                <!-- Diff injected here -->
+            </div>
+
+            <div class="card-label">MODERATOR FEEDBACK & FEEDBACK STRING</div>
+            <div id="rev-feedback-list"
+                style="max-height: 100px; overflow-y: auto; margin-bottom: 15px; font-size: 10px; border-left: 2px solid var(--border-dim); padding-left: 10px;">
+                <!-- Feedback items -->
+            </div>
+
+            <div id="moderator-controls" style="display: none;">
+                <textarea id="rev-feedback-input" class="input-field"
+                    placeholder="Enter critique, mark errors, or raise bugs..."
+                    style="width: 100%; height: 60px; margin-bottom: 10px; font-size: 11px;"></textarea>
+                <div style="display: flex; gap: 10px;">
+                    <button class="btn-glass" onclick="window.commander.submitReviewFeedback(false)"
+                        style="flex: 1; font-size: 10px;">LEAVE FEEDBACK</button>
+                    <button class="btn-glass" onclick="window.commander.submitReviewFeedback(true)"
+                        style="flex: 1; font-size: 10px; border-color: #f44336; color: #f44336;">RAISE BUG</button>
+                </div>
+                <button class="btn-glass" onclick="window.commander.approveReview()"
+                    style="width: 100%; margin-top: 10px; border-color: #4caf50; color: #4caf50;">APPROVE &
+                    PROMOTE</button>
+            </div>
+
+            <div id="requester-controls" style="display: none;">
+                <button class="btn-glass" onclick="window.commander.resolveReviewBugs()"
+                    style="width: 100%; border-color: #2196f3; color: #2196f3;">MARK BUGS AS RESOLVED</button>
+            </div>
+
+            <button class="btn-glass" onclick="document.getElementById('review-modal').style.display='none'"
+                style="width: 100%; margin-top: 20px; opacity: 0.5;">CLOSE</button>
+        </div>
+    </div>
+
+    <script src="js/commander.js"></script>
+</body>
+
+</html>

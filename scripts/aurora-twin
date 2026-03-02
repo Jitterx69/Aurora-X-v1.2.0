@@ -1,0 +1,125 @@
+#!/usr/bin/env python3
+"""
+AURORA-X Digital Twin CLI
+
+Developer tool for interacting with the Digital Twin in simulation mode.
+Provides commands to fetch twin state, toggle simulation mode, and inject
+synthetic data forces for testing.
+"""
+
+import os
+import sys
+import argparse
+import requests
+import json
+from pprint import pprint
+
+API_URL = os.environ.get("AURORA_API_URL", "http://localhost:8000")
+
+def check_server():
+    try:
+        requests.get(f"{API_URL}/")
+    except requests.exceptions.ConnectionError:
+        print(f"Error: Could not connect to AURORA-X server at {API_URL}")
+        sys.exit(1)
+
+def fetch_twin(args):
+    """Fetch digital twin state and report."""
+    resp = requests.get(f"{API_URL}/api/twin/{args.asset_id}")
+    if resp.status_code == 200:
+        data = resp.json()
+        print(f"====== Digital Twin Report: {args.asset_id} ======")
+        print(f"Mode : {data.get('mode', 'realtime')}")
+        if data.get('twin'):
+            twin = data['twin']
+            print("\n--- Health Score ---")
+            print(f"Score:       {twin['health_score']:.2f}%")
+            print(f"Degradation: {twin['degradation']:.4f}")
+            print(f"Hazard Rate: {twin['hazard_rate']:.6f}")
+            
+            if twin.get('physics_state'):
+                print("\n--- Physics Vector ---")
+                state = twin['physics_state']
+                print(f"Position: {state[0]:.4f}")
+                print(f"Velocity: {state[1]:.4f}")
+                print(f"Temperature: {state[2]:.4f}")
+                print(f"Pressure: {state[3]:.4f}")
+            
+            if twin.get('synced_state'):
+                print("\n--- Last Injected/Synced State ---")
+                for k, v in twin['synced_state'].items():
+                    print(f"{k}: {v}")
+        else:
+            print("No twin data found (asset may not be initialized).")
+    else:
+        print(f"Error fetching twin: {resp.text}")
+
+def set_mode(args):
+    """Set the twin mode."""
+    mode = args.mode.lower()
+    if mode not in ["realtime", "simulation"]:
+        print("Mode must be 'realtime' or 'simulation'")
+        sys.exit(1)
+        
+    resp = requests.post(f"{API_URL}/api/twin/{args.asset_id}/mode", json={"mode": mode})
+    if resp.status_code == 200:
+        print(f"Successfully set {args.asset_id} to {mode} mode.")
+    else:
+        print(f"Error setting mode: {resp.text}")
+
+def inject_data(args):
+    """Inject specific sensor/state values."""
+    payload = {}
+    for item in args.data:
+        if "=" not in item:
+            print(f"Invalid format: '{item}'. Use key=value")
+            sys.exit(1)
+        k, v = item.split("=", 1)
+        try:
+            v = float(v)
+        except ValueError:
+            # Leave as string
+            pass
+        payload[k] = v
+        
+    print(f"Injecting data to {args.asset_id}...")
+    resp = requests.post(f"{API_URL}/api/twin/{args.asset_id}/inject", json=payload)
+    if resp.status_code == 200:
+        res = resp.json()
+        if res.get("status") == "SUCCESS":
+            print(f"Success! Twin state updated.")
+        else:
+            print(f"Failed: {res.get('message')}")
+    else:
+        print(f"Error injecting data: {resp.text}")
+
+def main():
+    parser = argparse.ArgumentParser(description="AURORA-X Digital Twin Developer Tool")
+    subparsers = parser.add_subparsers(dest="command", required=True)
+    
+    # Fetch
+    parser_fetch = subparsers.add_parser("fetch", help="Fetch twin state")
+    parser_fetch.add_argument("asset_id", help="Asset ID (e.g., asset-turbine-001)")
+    
+    # Mode
+    parser_mode = subparsers.add_parser("mode", help="Change twin operation mode")
+    parser_mode.add_argument("asset_id", help="Asset ID")
+    parser_mode.add_argument("mode", help="'realtime' or 'simulation'")
+    
+    # Inject
+    parser_inject = subparsers.add_parser("inject", help="Inject state variables (Simulation mode only)")
+    parser_inject.add_argument("asset_id", help="Asset ID")
+    parser_inject.add_argument("data", nargs="+", help="Data to inject in key=value format (e.g., temperature=100.5)")
+    
+    args = parser.parse_args()
+    check_server()
+    
+    if args.command == "fetch":
+        fetch_twin(args)
+    elif args.command == "mode":
+        set_mode(args)
+    elif args.command == "inject":
+        inject_data(args)
+
+if __name__ == "__main__":
+    main()

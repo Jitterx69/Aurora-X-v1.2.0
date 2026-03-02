@@ -1,0 +1,68 @@
+# --- AURORA-X SECRETS & ENVIRONMENT ---
+# API Keys and Secrets
+.env
+.env.*
+*.key
+*.pem
+secrets/
+credentials.json
+gh_token.txt
+aws_access_key.id
+azure_secret.txt
+
+# --- PROJECT ROOTS & STORAGE ---
+# Data & Databases
+data/*.db
+data/secure_audit.db
+data/aurora_timeseries.db
+aurora_x/storage/*.db
+aurora_x/storage/*.db-journal
+*.sqlite
+*.db
+
+# Logs
+logs/
+*.log
+startup*.log
+
+# Models
+models/
+*.ckpt
+*.pt
+*.onnx
+
+# --- BUILD & RUNTIME ---
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+.venv/
+venv/
+ENV/
+.env
+build/
+dist/
+*.egg-info/
+
+# Rust
+target/
+Cargo.lock
+
+# Go
+bin/
+pkg/
+vendor/
+
+# Docker
+docker/.env
+
+# Temporary
+.tmp/
+tmp/
+.DS_Store
+node_modules/
+.next/
+out/
+.cargo_home/
+.gopath/
+.goroot/

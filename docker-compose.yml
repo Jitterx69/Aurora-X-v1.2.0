@@ -1,0 +1,97 @@
+version: "3.9"
+
+services:
+  # ===== AURORA-X Core =====
+  aurora-x:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: aurora-x-core
+    ports:
+      - "8000:8000"
+    environment:
+      - AURORA_CONFIG=/app/config/default.yaml
+    volumes:
+      - ./config:/app/config
+      - ./data:/app/data
+      - ./models:/app/models
+      - ./logs:/app/logs
+    depends_on:
+      - redis
+      - timescaledb
+    networks:
+      - aurora-net
+
+  # ===== Redis (Hot-State Cache) =====
+  redis:
+    image: redis:7-alpine
+    container_name: aurora-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis-data:/data
+    networks:
+      - aurora-net
+
+  # ===== TimescaleDB (Time-Series Storage) =====
+  timescaledb:
+    image: timescale/timescaledb:latest-pg15
+    container_name: aurora-timescaledb
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_USER: aurora
+      POSTGRES_PASSWORD: aurora
+      POSTGRES_DB: aurora_ts
+    volumes:
+      - tsdb-data:/var/lib/postgresql/data
+    networks:
+      - aurora-net
+
+  # ===== Grafana (Dashboards) =====
+  grafana:
+    image: grafana/grafana:latest
+    container_name: aurora-grafana
+    ports:
+      - "3000:3000"
+    environment:
+      GF_SECURITY_ADMIN_PASSWORD: aurora
+    volumes:
+      - grafana-data:/var/lib/grafana
+    depends_on:
+      - prometheus
+    networks:
+      - aurora-net
+
+  # ===== Prometheus (Metrics) =====
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: aurora-prometheus
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./config/prometheus.yml:/etc/prometheus/prometheus.yml
+    networks:
+      - aurora-net
+
+  # ===== MLflow (Model Registry) =====
+  mlflow:
+    image: ghcr.io/mlflow/mlflow:latest
+    container_name: aurora-mlflow
+    ports:
+      - "5001:5000"
+    command: mlflow server --host 0.0.0.0
+    volumes:
+      - mlflow-data:/mlflow
+    networks:
+      - aurora-net
+
+volumes:
+  redis-data:
+  tsdb-data:
+  grafana-data:
+  mlflow-data:
+
+networks:
+  aurora-net:
+    driver: bridge

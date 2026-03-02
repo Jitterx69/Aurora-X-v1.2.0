@@ -1,0 +1,142 @@
+# AURORA-X Configuration
+# =====================
+
+platform:
+  name: "AURORA-X"
+  version: "1.0.0"
+  mode: "development" # Options: development, staging, production, maintenance, emergency
+
+# --- Data Ingestion ---
+ingestion:
+  broker:
+    backend: "memory" # memory | kafka
+    kafka_bootstrap: "localhost:9092"
+    topic_prefix: "aurora"
+  edge_gateway:
+    enable_compression: true
+    compression_algo: "lz4"
+    timestamp_tolerance_ms: 500
+  sensor_simulator:
+    enabled: true
+    assets:
+      - id: "asset-turbine-001"
+        type: "gas_turbine"
+        sensors:
+          ["vibration", "thermal", "electrical", "pressure", "flow", "acoustic"]
+        sample_rate_hz: 100
+      - id: "asset-pump-002"
+        type: "centrifugal_pump"
+        sensors: ["vibration", "thermal", "pressure", "flow"]
+        sample_rate_hz: 50
+    fault_injection:
+      enabled: true
+      probability: 0.02
+      types: ["bearing_wear", "misalignment", "cavitation", "overheating"]
+
+# --- Feature Engineering ---
+pipeline:
+  window_size_samples: 256
+  window_overlap: 0.5
+  fft_n_bins: 128
+  rolling_stats_window: 64
+  anomaly_scorer:
+    method: "zscore" # zscore | isolation_forest
+    threshold: 3.0
+
+# --- State Estimation ---
+estimation:
+  kalman:
+    type: "ekf" # ekf | ukf
+    process_noise: 0.01
+    measurement_noise: 0.05
+  neural_residual:
+    hidden_dim: 4096
+    learning_rate: 0.0001
+    batch_size: 64
+
+# --- Digital Twin ---
+digital_twin:
+  solver: "rk4" # rk4 | euler
+  dt: 0.01
+  degradation:
+    weibull_shape: 2.5
+    weibull_scale: 10000
+    bayesian_samples: 1000
+  mode: "realtime" # realtime | simulation
+
+# --- Fault Detection ---
+fault_detection:
+  residual_threshold: 2.5
+  classifiers:
+    random_forest:
+      n_estimators: 100
+      max_depth: 10
+    svm:
+      kernel: "rbf"
+      C: 1.0
+  temporal:
+    model: "lstm" # lstm | transformer
+    hidden_dim: 800
+    num_layers: 4
+    sequence_length: 50
+
+  ensemble_weights:
+    residual: 0.2
+    ml: 0.3
+    temporal: 0.5
+
+# --- Reinforcement Learning ---
+rl:
+  algorithm: "cppo" # cppo | sac
+  gamma: 0.99
+  learning_rate: 0.0001
+  batch_size: 128
+  buffer_size: 200000
+  hidden_dim: 2560
+  constraint_threshold: 0.01
+  lagrangian_lr: 0.001
+
+  reward_weights:
+    efficiency: 1.0
+    degradation_penalty: -2.0
+    risk_cost: -5.0
+    energy_cost: -0.5
+
+# --- Safety Controller ---
+safety:
+  barrier_alpha: 0.1
+  max_temperature: 450.0
+  max_vibration: 15.0
+  max_pressure: 120.0
+  enable_fallback: true
+
+# --- Storage ---
+storage:
+  timeseries:
+    backend: "sqlite" # sqlite | timescaledb
+    sqlite_path: "data/aurora_timeseries.db"
+    timescaledb_url: "postgresql://aurora:aurora@localhost:5432/aurora_ts"
+  cache:
+    backend: "memory" # memory | redis
+    redis_url: "redis://localhost:6379/0"
+    ttl_seconds: 300
+  model_registry:
+    backend: "local" # local | mlflow
+    local_path: "models/"
+    mlflow_uri: "http://localhost:5000"
+
+# --- Observability ---
+observability:
+  prometheus:
+    enabled: true
+    port: 9090
+  tracing:
+    enabled: false
+    endpoint: "http://localhost:4317"
+
+# --- API ---
+api:
+  host: "0.0.0.0"
+  port: 8000
+  cors_origins: ["*"]
+  websocket_interval_ms: 500
