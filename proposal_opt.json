@@ -1,0 +1,1 @@
+{"pipeline": {"window_size_samples": 512, "fft_n_bins": 256}}
