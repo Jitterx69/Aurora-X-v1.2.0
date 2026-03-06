@@ -1,7 +1,7 @@
 # AURORA-X Multi-Stage Build (Rust + Go + Python)
 
-# -- Stage 1: Rust Extension --
-FROM rust:1.78-slim AS rust-builder
+# rayon >= 1.11 requires Rust 1.80+
+FROM rust:1.83-slim AS rust-builder
 
 RUN apt-get update && \
     apt-get install -y --no-install-recommends \
@@ -12,21 +12,8 @@ RUN apt-get update && \
 WORKDIR /build/aurora_core
 COPY aurora_core/ .
 
-# Allow warnings during build (clippy advisory only in CI)
 ENV RUSTFLAGS=""
-RUN maturin build --release --out /wheels 2>&1 || \
-    (echo "Rust build failed, creating stub wheel" && \
-    pip3 install --break-system-packages setuptools wheel && \
-    mkdir -p /wheels && \
-    echo "# aurora_core stub - Rust build skipped" > /tmp/stub.py && \
-    cd /tmp && python3 -c "
-import setuptools
-setuptools.setup(
-name='aurora_core',
-version='0.1.0',
-py_modules=['stub'],
-description='aurora_core stub (Rust build unavailable)'
-)" bdist_wheel -d /wheels)
+RUN maturin build --release --out /wheels
 
 # -- Stage 2: Go Services --
 FROM golang:1.22-alpine AS go-builder
@@ -50,10 +37,9 @@ RUN apt-get update && apt-get upgrade -y && \
     apt-get install -y --no-install-recommends curl && \
     rm -rf /var/lib/apt/lists/*
 
-# Install Rust wheel (or stub if build failed)
-COPY --from=rust-builder /wheels/ /tmp/wheels/
-RUN pip install --no-cache-dir /tmp/wheels/*.whl 2>/dev/null || true && \
-    rm -rf /tmp/wheels
+# Install Rust wheel
+COPY --from=rust-builder /wheels/*.whl /tmp/
+RUN pip install --no-cache-dir /tmp/*.whl && rm -rf /tmp/*.whl
 
 # Copy Go binary
 COPY --from=go-builder /go-services /usr/local/bin/aurora-services
