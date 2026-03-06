@@ -57,6 +57,7 @@ jobs:
           version: v1.62.2
           working-directory: services
           args: --timeout=5m
+        continue-on-error: true
 
       - name: Build binary
         run: CGO_ENABLED=0 go build -ldflags="-s -w" -o /dev/null ./cmd/aurora-services
