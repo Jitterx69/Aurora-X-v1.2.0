@@ -22,6 +22,10 @@ on:
             - "requirements.txt"
             - ".github/workflows/ci-python.yml"
 
+concurrency:
+    group: python-ci-${{ github.ref }}
+    cancel-in-progress: true
+
 permissions:
     contents: read
 
@@ -29,13 +33,16 @@ jobs:
     python-ci:
         name: Python CI
         runs-on: ubuntu-latest
+        timeout-minutes: 20
 
         steps:
             - name: Checkout repository
-              uses: actions/checkout@v4
+              uses: actions/checkout@v4.2.2
+              with:
+                  persist-credentials: false
 
             - name: Setup Python 3.11
-              uses: actions/setup-python@v5
+              uses: actions/setup-python@v5.3.0
               with:
                   python-version: "3.11"
                   cache: "pip"
@@ -47,7 +54,7 @@ jobs:
                   pip install torch --index-url https://download.pytorch.org/whl/cpu
                   pip install -r requirements.txt
                   # Install CI tooling
-                  pip install ruff mypy
+                  pip install ruff mypy bandit
 
             - name: Lint with Ruff
               run: ruff check aurora_x/ scripts/ tests/
@@ -61,8 +68,19 @@ jobs:
                     --ignore-missing-imports \
                     --no-strict-optional \
                     --allow-untyped-defs \
-                    --no-error-summary || true
-              continue-on-error: true # Advisory for now; tighten later
+                    --no-error-summary 2>&1 | head -100
+                  echo "::notice::mypy completed (advisory mode — tighten later)"
+
+            - name: Security lint with Bandit
+              run: |
+                  bandit -r aurora_x/ scripts/ \
+                    -ll \
+                    --severity-level medium \
+                    -f json -o bandit-results.json || true
+                  bandit -r aurora_x/ scripts/ \
+                    -ll \
+                    --severity-level high \
+                    -f screen
 
             - name: Verify package imports
               run: |
@@ -85,6 +103,20 @@ jobs:
             - name: Check for hardcoded secrets
               run: |
                   # Ensure no real credentials sneak into the Python source
-                  ! grep -rn "AKIA\|sk-live\|ghp_\|gho_\|glpat-\|xox[bpoas]-" \
-                    aurora_x/ scripts/ config/ \
-                    || (echo "::error::Potential hardcoded secrets detected!" && exit 1)
+                  FOUND=$(grep -rn 'AKIA[0-9A-Z]\{16\}\|sk-live_\|ghp_[a-zA-Z0-9]\{36\}\|gho_[a-zA-Z0-9]\{36\}\|glpat-\|xox[bpoas]-' \
+                    aurora_x/ scripts/ config/ 2>/dev/null || true)
+                  if [ -n "$FOUND" ]; then
+                    echo "::error::Potential hardcoded secrets detected!"
+                    echo "$FOUND"
+                    exit 1
+                  fi
+                  echo "✓ No hardcoded secrets found"
+
+            - name: Upload Bandit results
+              if: always()
+              uses: actions/upload-artifact@v4.6.0
+              with:
+                  name: bandit-results
+                  path: bandit-results.json
+                  retention-days: 30
+                  if-no-files-found: ignore

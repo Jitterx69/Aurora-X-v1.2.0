@@ -16,6 +16,11 @@ on:
       - "aurora_core/**"
       - ".github/workflows/ci-rust.yml"
 
+# Prevent concurrent runs on the same branch/PR
+concurrency:
+  group: rust-ci-${{ github.ref }}
+  cancel-in-progress: true
+
 permissions:
   contents: read
 
@@ -27,13 +32,16 @@ jobs:
   rust-ci:
     name: Rust CI
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     defaults:
       run:
         working-directory: aurora_core
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v4.2.2
+        with:
+          persist-credentials: false
 
       - name: Install Rust toolchain
         uses: dtolnay/rust-toolchain@stable
@@ -41,7 +49,7 @@ jobs:
           components: rustfmt, clippy
 
       - name: Cache Cargo registry & build
-        uses: actions/cache@v4
+        uses: actions/cache@v4.2.0
         with:
           path: |
             ~/.cargo/registry
@@ -52,7 +60,7 @@ jobs:
 
       # ── Python headers needed for PyO3 ──
       - name: Install Python 3.11 (PyO3 dependency)
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v5.3.0
         with:
           python-version: "3.11"
 

@@ -1,6 +1,6 @@
 # ──────────────────────────────────────────────────────────────
 # AURORA-X · Security Scanning
-# Secret detection → Dependency audit → SAST
+# Secret detection → Dependency audit → SAST → Leak verification
 # ──────────────────────────────────────────────────────────────
 name: "Security Scan"
 
@@ -13,23 +13,29 @@ on:
         # Run weekly on Monday at 06:00 UTC
         - cron: "0 6 * * 1"
 
+concurrency:
+    group: security-${{ github.ref }}
+    cancel-in-progress: false # Never cancel security scans
+
 permissions:
     contents: read
-    security-events: write # For uploading SARIF results
+    security-events: write
 
 jobs:
     # ── Secret Detection ──
     secret-scan:
         name: Secret Detection
         runs-on: ubuntu-latest
+        timeout-minutes: 15
         steps:
             - name: Checkout repository
-              uses: actions/checkout@v4
+              uses: actions/checkout@v4.2.2
               with:
-                  fetch-depth: 0 # Full history for thorough scanning
+                  fetch-depth: 0
+                  persist-credentials: false
 
             - name: TruffleHog secret scan
-              uses: trufflesecurity/trufflehog@main
+              uses: trufflesecurity/trufflehog@v3.88.0
               with:
                   extra_args: --only-verified
 
@@ -37,12 +43,15 @@ jobs:
     python-audit:
         name: Python Dependency Audit
         runs-on: ubuntu-latest
+        timeout-minutes: 10
         steps:
             - name: Checkout repository
-              uses: actions/checkout@v4
+              uses: actions/checkout@v4.2.2
+              with:
+                  persist-credentials: false
 
             - name: Setup Python
-              uses: actions/setup-python@v5
+              uses: actions/setup-python@v5.3.0
               with:
                   python-version: "3.11"
 
@@ -55,9 +64,12 @@ jobs:
     rust-audit:
         name: Rust Dependency Audit
         runs-on: ubuntu-latest
+        timeout-minutes: 15
         steps:
             - name: Checkout repository
-              uses: actions/checkout@v4
+              uses: actions/checkout@v4.2.2
+              with:
+                  persist-credentials: false
 
             - name: Install Rust toolchain
               uses: dtolnay/rust-toolchain@stable
@@ -73,12 +85,15 @@ jobs:
     go-vuln-check:
         name: Go Vulnerability Check
         runs-on: ubuntu-latest
+        timeout-minutes: 10
         steps:
             - name: Checkout repository
-              uses: actions/checkout@v4
+              uses: actions/checkout@v4.2.2
+              with:
+                  persist-credentials: false
 
             - name: Setup Go
-              uses: actions/setup-go@v5
+              uses: actions/setup-go@v5.3.0
               with:
                   go-version: "1.22"
 
@@ -93,11 +108,14 @@ jobs:
     sast:
         name: Static Application Security Testing
         runs-on: ubuntu-latest
+        timeout-minutes: 20
         container:
-            image: semgrep/semgrep
+            image: semgrep/semgrep:1.103
         steps:
             - name: Checkout repository
-              uses: actions/checkout@v4
+              uses: actions/checkout@v4.2.2
+              with:
+                  persist-credentials: false
 
             - name: Run Semgrep
               run: |
@@ -114,7 +132,7 @@ jobs:
 
             - name: Upload Semgrep results
               if: always()
-              uses: actions/upload-artifact@v4
+              uses: actions/upload-artifact@v4.6.0
               with:
                   name: semgrep-results
                   path: semgrep-results.json
@@ -124,9 +142,12 @@ jobs:
     gitignore-verify:
         name: Verify Sensitive Files Not Tracked
         runs-on: ubuntu-latest
+        timeout-minutes: 5
         steps:
             - name: Checkout repository
-              uses: actions/checkout@v4
+              uses: actions/checkout@v4.2.2
+              with:
+                  persist-credentials: false
 
             - name: Check for tracked sensitive files
               run: |
@@ -145,8 +166,13 @@ jobs:
                   done
 
                   # Check for known secret patterns in tracked files
-                  if git grep -lI "AKIA[0-9A-Z]\{16\}" -- '*.py' '*.go' '*.rs' '*.yaml' '*.yml' '*.json' 2>/dev/null; then
+                  if git grep -lI 'AKIA[0-9A-Z]\{16\}' -- '*.py' '*.go' '*.rs' '*.yaml' '*.yml' '*.json' 2>/dev/null; then
                     echo "::error::Potential AWS access key found in tracked files!"
+                    FAIL=1
+                  fi
+
+                  if git grep -lI 'ghp_[a-zA-Z0-9]\{36\}' -- '*.py' '*.go' '*.rs' '*.yaml' '*.yml' '*.json' 2>/dev/null; then
+                    echo "::error::Potential GitHub PAT found in tracked files!"
                     FAIL=1
                   fi
 
@@ -154,3 +180,20 @@ jobs:
                     exit 1
                   fi
                   echo "✓ No sensitive files found in tracked content"
+
+    # ── Dockerfile Security Lint ──
+    dockerfile-lint:
+        name: Dockerfile Security Lint
+        runs-on: ubuntu-latest
+        timeout-minutes: 5
+        steps:
+            - name: Checkout repository
+              uses: actions/checkout@v4.2.2
+              with:
+                  persist-credentials: false
+
+            - name: Lint Dockerfile with Hadolint
+              uses: hadolint/hadolint-action@v3.1.0
+              with:
+                  dockerfile: Dockerfile
+                  failure-threshold: warning

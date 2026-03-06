@@ -5,64 +5,71 @@
 name: "CI · Go Services"
 
 on:
-    push:
-        branches: [main, develop]
-        paths:
-            - "services/**"
-            - ".github/workflows/ci-go.yml"
-    pull_request:
-        branches: [main, develop]
-        paths:
-            - "services/**"
-            - ".github/workflows/ci-go.yml"
+  push:
+    branches: [main, develop]
+    paths:
+      - "services/**"
+      - ".github/workflows/ci-go.yml"
+  pull_request:
+    branches: [main, develop]
+    paths:
+      - "services/**"
+      - ".github/workflows/ci-go.yml"
+
+concurrency:
+  group: go-ci-${{ github.ref }}
+  cancel-in-progress: true
 
 permissions:
-    contents: read
+  contents: read
 
 jobs:
-    go-ci:
-        name: Go CI
-        runs-on: ubuntu-latest
-        defaults:
-            run:
-                working-directory: services
+  go-ci:
+    name: Go CI
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    defaults:
+      run:
+        working-directory: services
 
-        steps:
-            - name: Checkout repository
-              uses: actions/checkout@v4
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4.2.2
+        with:
+          persist-credentials: false
 
-            - name: Setup Go
-              uses: actions/setup-go@v5
-              with:
-                  go-version: "1.22"
-                  cache-dependency-path: services/go.sum
+      - name: Setup Go
+        uses: actions/setup-go@v5.3.0
+        with:
+          go-version: "1.22"
+          cache-dependency-path: services/go.sum
 
-            - name: Download dependencies
-              run: go mod download
+      - name: Download dependencies
+        run: go mod download
 
-            - name: Verify module integrity
-              run: go mod verify
+      - name: Verify module integrity
+        run: go mod verify
 
-            - name: Run go vet
-              run: go vet ./...
+      - name: Run go vet
+        run: go vet ./...
 
-            - name: Lint with golangci-lint
-              uses: golangci/golangci-lint-action@v6
-              with:
-                  version: latest
-                  working-directory: services
-                  args: --timeout=5m
+      - name: Lint with golangci-lint
+        uses: golangci/golangci-lint-action@v6.5.0
+        with:
+          version: v1.62.2
+          working-directory: services
+          args: --timeout=5m
 
-            - name: Build binary
-              run: CGO_ENABLED=0 go build -ldflags="-s -w" -o /dev/null ./cmd/aurora-services
+      - name: Build binary
+        run: CGO_ENABLED=0 go build -ldflags="-s -w" -o /dev/null ./cmd/aurora-services
 
-            - name: Run tests
-              run: go test -v -race -coverprofile=coverage.out ./...
+      - name: Run tests
+        run: go test -v -race -coverprofile=coverage.out ./...
 
-            - name: Upload Go coverage
-              if: always()
-              uses: actions/upload-artifact@v4
-              with:
-                  name: go-coverage
-                  path: services/coverage.out
-                  retention-days: 7
+      - name: Upload Go coverage
+        if: always()
+        uses: actions/upload-artifact@v4.6.0
+        with:
+          name: go-coverage
+          path: services/coverage.out
+          retention-days: 7

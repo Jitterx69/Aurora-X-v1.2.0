@@ -1,3 +1,5 @@
+# AURORA-X Docker Compose
+# SECURITY: Override credentials via .env file (gitignored)
 version: "3.9"
 
 services:
@@ -40,9 +42,9 @@ services:
     ports:
       - "5432:5432"
     environment:
-      POSTGRES_USER: aurora
-      POSTGRES_PASSWORD: aurora
-      POSTGRES_DB: aurora_ts
+      POSTGRES_USER: ${POSTGRES_USER:-aurora}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}
+      POSTGRES_DB: ${POSTGRES_DB:-aurora_ts}
     volumes:
       - tsdb-data:/var/lib/postgresql/data
     networks:
@@ -55,7 +57,7 @@ services:
     ports:
       - "3000:3000"
     environment:
-      GF_SECURITY_ADMIN_PASSWORD: aurora
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD:?Set GRAFANA_ADMIN_PASSWORD in .env}
     volumes:
       - grafana-data:/var/lib/grafana
     depends_on:
