@@ -1,0 +1,156 @@
+# ──────────────────────────────────────────────────────────────
+# AURORA-X · Security Scanning
+# Secret detection → Dependency audit → SAST
+# ──────────────────────────────────────────────────────────────
+name: "Security Scan"
+
+on:
+    push:
+        branches: [main, develop]
+    pull_request:
+        branches: [main, develop]
+    schedule:
+        # Run weekly on Monday at 06:00 UTC
+        - cron: "0 6 * * 1"
+
+permissions:
+    contents: read
+    security-events: write # For uploading SARIF results
+
+jobs:
+    # ── Secret Detection ──
+    secret-scan:
+        name: Secret Detection
+        runs-on: ubuntu-latest
+        steps:
+            - name: Checkout repository
+              uses: actions/checkout@v4
+              with:
+                  fetch-depth: 0 # Full history for thorough scanning
+
+            - name: TruffleHog secret scan
+              uses: trufflesecurity/trufflehog@main
+              with:
+                  extra_args: --only-verified
+
+    # ── Python Dependency Audit ──
+    python-audit:
+        name: Python Dependency Audit
+        runs-on: ubuntu-latest
+        steps:
+            - name: Checkout repository
+              uses: actions/checkout@v4
+
+            - name: Setup Python
+              uses: actions/setup-python@v5
+              with:
+                  python-version: "3.11"
+
+            - name: Audit Python dependencies
+              run: |
+                  pip install pip-audit
+                  pip-audit -r requirements.txt --strict --desc
+
+    # ── Rust Dependency Audit ──
+    rust-audit:
+        name: Rust Dependency Audit
+        runs-on: ubuntu-latest
+        steps:
+            - name: Checkout repository
+              uses: actions/checkout@v4
+
+            - name: Install Rust toolchain
+              uses: dtolnay/rust-toolchain@stable
+
+            - name: Install cargo-audit
+              run: cargo install cargo-audit
+
+            - name: Audit Rust dependencies
+              working-directory: aurora_core
+              run: cargo audit
+
+    # ── Go Vulnerability Check ──
+    go-vuln-check:
+        name: Go Vulnerability Check
+        runs-on: ubuntu-latest
+        steps:
+            - name: Checkout repository
+              uses: actions/checkout@v4
+
+            - name: Setup Go
+              uses: actions/setup-go@v5
+              with:
+                  go-version: "1.22"
+
+            - name: Install govulncheck
+              run: go install golang.org/x/vuln/cmd/govulncheck@latest
+
+            - name: Run govulncheck
+              working-directory: services
+              run: govulncheck ./...
+
+    # ── SAST with Semgrep ──
+    sast:
+        name: Static Application Security Testing
+        runs-on: ubuntu-latest
+        container:
+            image: semgrep/semgrep
+        steps:
+            - name: Checkout repository
+              uses: actions/checkout@v4
+
+            - name: Run Semgrep
+              run: |
+                  semgrep scan \
+                    --config auto \
+                    --config p/python \
+                    --config p/golang \
+                    --config p/rust \
+                    --config p/security-audit \
+                    --config p/secrets \
+                    --error \
+                    --json --output semgrep-results.json \
+                    aurora_x/ services/ aurora_core/src/ scripts/ config/
+
+            - name: Upload Semgrep results
+              if: always()
+              uses: actions/upload-artifact@v4
+              with:
+                  name: semgrep-results
+                  path: semgrep-results.json
+                  retention-days: 30
+
+    # ── .gitignore Leak Check ──
+    gitignore-verify:
+        name: Verify Sensitive Files Not Tracked
+        runs-on: ubuntu-latest
+        steps:
+            - name: Checkout repository
+              uses: actions/checkout@v4
+
+            - name: Check for tracked sensitive files
+              run: |
+                  echo "Checking for sensitive files that should be gitignored..."
+                  FAIL=0
+
+                  # Check for files that should NEVER be in the repo
+                  for pattern in "*.key" "*.pem" ".env" ".env.*" "credentials.json" \
+                                 "gh_token.txt" "aws_access_key.id" "azure_secret.txt" \
+                                 "*.db" "*.sqlite"; do
+                    FOUND=$(git ls-files "$pattern" 2>/dev/null)
+                    if [ -n "$FOUND" ]; then
+                      echo "::error::SECURITY VIOLATION: Tracked file matches sensitive pattern '$pattern': $FOUND"
+                      FAIL=1
+                    fi
+                  done
+
+                  # Check for known secret patterns in tracked files
+                  if git grep -lI "AKIA[0-9A-Z]\{16\}" -- '*.py' '*.go' '*.rs' '*.yaml' '*.yml' '*.json' 2>/dev/null; then
+                    echo "::error::Potential AWS access key found in tracked files!"
+                    FAIL=1
+                  fi
+
+                  if [ "$FAIL" -eq 1 ]; then
+                    exit 1
+                  fi
+                  echo "✓ No sensitive files found in tracked content"

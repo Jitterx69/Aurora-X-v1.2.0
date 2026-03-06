@@ -1,0 +1,30 @@
+# ──────────────────────────────────────────────────────────────
+# AURORA-X CODEOWNERS
+# Enforces review requirements aligned with the tiered
+# access control model (AccessTier in access_control.py)
+# ──────────────────────────────────────────────────────────────
+
+# ── Security-Critical (requires SENIOR / MASTER tier review) ──
+/aurora_x/security/           @Jitterx69
+/config/                      @Jitterx69
+/.github/workflows/           @Jitterx69
+/.github/CODEOWNERS           @Jitterx69
+/Dockerfile                   @Jitterx69
+/docker-compose.yml           @Jitterx69
+
+# ── Rust Core ──
+/aurora_core/                 @Jitterx69
+
+# ── Go Services ──
+/services/                    @Jitterx69
+
+# ── Python Platform ──
+/aurora_x/                    @Jitterx69
+/scripts/                     @Jitterx69
+/requirements.txt             @Jitterx69
+
+# ── Dashboard / Frontend ──
+/dashboard/                   @Jitterx69
+
+# ── Catch-all ──
+*                             @Jitterx69
