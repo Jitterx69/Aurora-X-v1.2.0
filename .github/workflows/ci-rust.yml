@@ -1,8 +1,6 @@
-# ──────────────────────────────────────────────────────────────
-# AURORA-X CI · Rust Core (aurora_core/)
-# Lint → Format → Build → Test
-# ──────────────────────────────────────────────────────────────
-name: "CI · Rust Core"
+# AURORA-X CI - Rust Core (aurora_core/)
+# Lint -> Format -> Build -> Test
+name: "CI - Rust Core"
 
 on:
   push:
@@ -16,7 +14,6 @@ on:
       - "aurora_core/**"
       - ".github/workflows/ci-rust.yml"
 
-# Prevent concurrent runs on the same branch/PR
 concurrency:
   group: rust-ci-${{ github.ref }}
   cancel-in-progress: true
@@ -39,7 +36,7 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4.2.2
+        uses: actions/checkout@v4
         with:
           persist-credentials: false
 
@@ -48,8 +45,8 @@ jobs:
         with:
           components: rustfmt, clippy
 
-      - name: Cache Cargo registry & build
-        uses: actions/cache@v4.2.0
+      - name: Cache Cargo registry and build
+        uses: actions/cache@v4
         with:
           path: |
             ~/.cargo/registry
@@ -58,9 +55,8 @@ jobs:
           key: rust-${{ runner.os }}-${{ hashFiles('aurora_core/Cargo.toml') }}
           restore-keys: rust-${{ runner.os }}-
 
-      # ── Python headers needed for PyO3 ──
       - name: Install Python 3.11 (PyO3 dependency)
-        uses: actions/setup-python@v5.3.0
+        uses: actions/setup-python@v5
         with:
           python-version: "3.11"
 
@@ -70,7 +66,7 @@ jobs:
       - name: Clippy lint
         run: cargo clippy --all-targets --all-features -- -D warnings
 
-      - name: Build (release)
+      - name: Build release
         run: cargo build --release
 
       - name: Run tests

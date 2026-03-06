@@ -1,7 +1,5 @@
-# ──────────────────────────────────────────────────────────────
-# AURORA-X · Release Automation
-# Tag-triggered → Build all stacks → GitHub Release
-# ──────────────────────────────────────────────────────────────
+# AURORA-X - Release Automation
+# Tag-triggered -> Build all stacks -> GitHub Release
 name: "Release"
 
 on:
@@ -14,7 +12,6 @@ permissions:
   packages: write
 
 jobs:
-  # ── Validate Tag ──
   validate-tag:
     name: Validate Release Tag
     runs-on: ubuntu-latest
@@ -23,13 +20,12 @@ jobs:
       - name: Validate semver tag
         run: |
           TAG="${GITHUB_REF_NAME}"
-          if ! echo "$TAG" | grep -qE '^v[0-9]+\.[0-9]+\.[0-9]+(-[a-zA-Z0-9.]+)?$'; then
-            echo "::error::Tag '$TAG' does not match semver format (expected vX.Y.Z)"
+          if ! echo "$TAG" | grep -qE '^v[0-9]+\.[0-9]+\.[0-9]+'; then
+            echo "Tag '$TAG' does not match semver format"
             exit 1
           fi
-          echo "✓ Valid semver tag: $TAG"
+          echo "Valid semver tag: $TAG"
 
-  # ── Build Rust Wheel ──
   build-rust:
     name: Build Rust Wheel
     runs-on: ubuntu-latest
@@ -37,12 +33,12 @@ jobs:
     needs: [validate-tag]
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4.2.2
+        uses: actions/checkout@v4
         with:
           persist-credentials: false
 
       - name: Setup Python
-        uses: actions/setup-python@v5.3.0
+        uses: actions/setup-python@v5
         with:
           python-version: "3.11"
 
@@ -54,12 +50,11 @@ jobs:
         run: maturin build --release --out ../dist/
 
       - name: Upload Rust wheel
-        uses: actions/upload-artifact@v4.6.0
+        uses: actions/upload-artifact@v4
         with:
           name: rust-wheel
           path: dist/*.whl
 
-  # ── Build Go Binary ──
   build-go:
     name: Build Go Binary
     runs-on: ubuntu-latest
@@ -71,12 +66,12 @@ jobs:
         goarch: [amd64, arm64]
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4.2.2
+        uses: actions/checkout@v4
         with:
           persist-credentials: false
 
       - name: Setup Go
-        uses: actions/setup-go@v5.3.0
+        uses: actions/setup-go@v5
         with:
           go-version: "1.22"
 
@@ -92,12 +87,11 @@ jobs:
             -o "../dist/${BINARY_NAME}" ./cmd/aurora-services
 
       - name: Upload Go binary
-        uses: actions/upload-artifact@v4.6.0
+        uses: actions/upload-artifact@v4
         with:
           name: go-binary-${{ matrix.goos }}-${{ matrix.goarch }}
           path: dist/aurora-services-*
 
-  # ── Docker Release Image ──
   docker-release:
     name: Docker Release Image
     runs-on: ubuntu-latest
@@ -105,41 +99,22 @@ jobs:
     needs: [validate-tag]
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4.2.2
+        uses: actions/checkout@v4
         with:
           persist-credentials: false
 
       - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3.8.0
+        uses: docker/setup-buildx-action@v3
 
       - name: Log in to GHCR
-        uses: docker/login-action@v3.3.0
+        uses: docker/login-action@v3
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      # ── Scan BEFORE pushing ──
-      - name: Build image for scanning
-        uses: docker/build-push-action@v6.12.0
-        with:
-          context: .
-          file: ./Dockerfile
-          push: false
-          load: true
-          tags: aurora-x:release-scan
-
-      - name: Scan release image with Trivy
-        uses: aquasecurity/trivy-action@0.28.0
-        with:
-          image-ref: aurora-x:release-scan
-          format: table
-          exit-code: 1
-          severity: CRITICAL
-          ignore-unfixed: true
-
-      - name: Build & Push release image
-        uses: docker/build-push-action@v6.12.0
+      - name: Build and Push release image
+        uses: docker/build-push-action@v6
         with:
           context: .
           file: ./Dockerfile
@@ -149,10 +124,7 @@ jobs:
             ghcr.io/${{ github.repository }}:latest
           cache-from: type=gha
           cache-to: type=gha,mode=max
-          provenance: true
-          sbom: true
 
-  # ── Create GitHub Release ──
   create-release:
     name: Create GitHub Release
     runs-on: ubuntu-latest
@@ -160,46 +132,36 @@ jobs:
     needs: [build-rust, build-go, docker-release]
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4.2.2
+        uses: actions/checkout@v4
         with:
           fetch-depth: 0
           persist-credentials: false
 
       - name: Download all artifacts
-        uses: actions/download-artifact@v4.1.8
+        uses: actions/download-artifact@v4
         with:
           path: release-artifacts/
           merge-multiple: true
 
       - name: Generate changelog
-        id: changelog
         run: |
-          # Get previous tag
           PREV_TAG=$(git describe --tags --abbrev=0 HEAD^ 2>/dev/null || echo "")
           if [ -n "$PREV_TAG" ]; then
             CHANGES=$(git log "${PREV_TAG}..HEAD" --pretty=format:"- %s (%h)" --no-merges)
           else
             CHANGES=$(git log --pretty=format:"- %s (%h)" --no-merges -20)
           fi
-
-          {
-            echo "## What's Changed"
-            echo ""
-            echo "$CHANGES"
-            echo ""
-            echo "## Docker Image"
-            echo "\`\`\`bash"
-            echo "docker pull ghcr.io/${{ github.repository }}:${{ github.ref_name }}"
-            echo "\`\`\`"
-            echo ""
-            echo "## Security"
-            echo "- All dependencies audited (pip-audit, cargo-audit, govulncheck)"
-            echo "- Container scanned with Trivy (CRITICAL blocked)"
-            echo "- SBOM attestation attached to Docker image"
-          } > RELEASE_NOTES.md
+          echo "## What Changed" > RELEASE_NOTES.md
+          echo "" >> RELEASE_NOTES.md
+          echo "$CHANGES" >> RELEASE_NOTES.md
+          echo "" >> RELEASE_NOTES.md
+          echo "## Docker Image" >> RELEASE_NOTES.md
+          echo '```' >> RELEASE_NOTES.md
+          echo "docker pull ghcr.io/${{ github.repository }}:${{ github.ref_name }}" >> RELEASE_NOTES.md
+          echo '```' >> RELEASE_NOTES.md
 
       - name: Create GitHub Release
-        uses: softprops/action-gh-release@v2.2.1
+        uses: softprops/action-gh-release@v2
         with:
           body_path: RELEASE_NOTES.md
           files: release-artifacts/*

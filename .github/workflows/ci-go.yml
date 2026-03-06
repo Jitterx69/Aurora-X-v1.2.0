@@ -1,8 +1,6 @@
-# ──────────────────────────────────────────────────────────────
-# AURORA-X CI · Go Services (services/)
-# Lint → Vet → Build → Test
-# ──────────────────────────────────────────────────────────────
-name: "CI · Go Services"
+# AURORA-X CI - Go Services (services/)
+# Lint -> Vet -> Build -> Test
+name: "CI - Go Services"
 
 on:
   push:
@@ -34,12 +32,12 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4.2.2
+        uses: actions/checkout@v4
         with:
           persist-credentials: false
 
       - name: Setup Go
-        uses: actions/setup-go@v5.3.0
+        uses: actions/setup-go@v5
         with:
           go-version: "1.22"
           cache-dependency-path: services/go.sum
@@ -54,7 +52,7 @@ jobs:
         run: go vet ./...
 
       - name: Lint with golangci-lint
-        uses: golangci/golangci-lint-action@v6.5.0
+        uses: golangci/golangci-lint-action@v6
         with:
           version: v1.62.2
           working-directory: services
@@ -68,7 +66,7 @@ jobs:
 
       - name: Upload Go coverage
         if: always()
-        uses: actions/upload-artifact@v4.6.0
+        uses: actions/upload-artifact@v4
         with:
           name: go-coverage
           path: services/coverage.out
