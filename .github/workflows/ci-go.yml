@@ -43,7 +43,9 @@ jobs:
           cache-dependency-path: services/go.sum
 
       - name: Download dependencies
-        run: go mod download
+        run: |
+          go mod tidy
+          go mod download
 
       - name: Verify module integrity
         run: go mod verify
