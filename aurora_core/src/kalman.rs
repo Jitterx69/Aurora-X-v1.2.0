@@ -103,17 +103,17 @@ impl ExtendedKalmanFilter {
     }
 
     fn state<'py>(&self, py: Python<'py>) -> Py<PyArray1<f64>> {
-        self.x.clone().into_pyarray_bound(py).unbind()
+        self.x.clone().into_pyarray(py).unbind()
     }
 
     fn covariance<'py>(&self, py: Python<'py>) -> Py<PyArray2<f64>> {
-        self.p.clone().into_pyarray_bound(py).unbind()
+        self.p.clone().into_pyarray(py).unbind()
     }
 
     fn uncertainty<'py>(&self, py: Python<'py>) -> Py<PyArray1<f64>> {
         let diag: Array1<f64> =
             Array1::from_iter((0..self.state_dim).map(|i| self.p[[i, i]].sqrt()));
-        diag.into_pyarray_bound(py).unbind()
+        diag.into_pyarray(py).unbind()
     }
 }
 
@@ -255,17 +255,17 @@ impl UnscentedKalmanFilter {
     }
 
     fn state<'py>(&self, py: Python<'py>) -> Py<PyArray1<f64>> {
-        self.x.clone().into_pyarray_bound(py).unbind()
+        self.x.clone().into_pyarray(py).unbind()
     }
 
     fn covariance<'py>(&self, py: Python<'py>) -> Py<PyArray2<f64>> {
-        self.p.clone().into_pyarray_bound(py).unbind()
+        self.p.clone().into_pyarray(py).unbind()
     }
 
     fn uncertainty<'py>(&self, py: Python<'py>) -> Py<PyArray1<f64>> {
         let diag: Array1<f64> =
             Array1::from_iter((0..self.state_dim).map(|i| self.p[[i, i]].sqrt()));
-        diag.into_pyarray_bound(py).unbind()
+        diag.into_pyarray(py).unbind()
     }
 }
 

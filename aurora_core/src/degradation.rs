@@ -59,9 +59,17 @@ impl WeibullModel {
         self.scale * gamma_fn(1.0 + 1.0 / self.shape)
     }
 
-    fn hazard_rates<'py>(&self, py: Python<'py>, times: Vec<f64>) -> Py<PyArray1<f64>> {
-        let rates: Vec<f64> = times.iter().map(|&t| self.hazard_rate(t)).collect();
-        Array1::from_vec(rates).into_pyarray_bound(py).unbind()
+    fn hazard_rates<'py>(
+        &self,
+        py: Python<'py>,
+        t: PyReadonlyArray1<'_, f64>,
+    ) -> Py<PyArray1<f64>> {
+        let rates: Vec<f64> = t
+            .as_array()
+            .iter()
+            .map(|&tv| (self.shape / self.scale) * (tv / self.scale).powf(self.shape - 1.0))
+            .collect();
+        Array1::from_vec(rates).into_pyarray(py).unbind()
     }
 }
 
@@ -164,7 +172,7 @@ impl BayesianRUL {
         let p10 = weighted_percentile(&sorted, 0.1);
         let p90 = weighted_percentile(&sorted, 0.9);
 
-        let dict = PyDict::new_bound(py);
+        let dict = PyDict::new(py);
         dict.set_item("mean", mean)?;
         dict.set_item("std", var.sqrt())?;
         dict.set_item("median", median)?;

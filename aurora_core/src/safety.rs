@@ -130,7 +130,7 @@ impl SafetyController {
     }
 
     fn get_stats<'py>(&self, py: Python<'py>) -> PyResult<Py<PyDict>> {
-        let dict = PyDict::new_bound(py);
+        let dict = PyDict::new(py);
         dict.set_item("violations", self.violation_count)?;
         dict.set_item("interventions", self.intervention_count)?;
         dict.set_item("fallbacks", self.fallback_count)?;
@@ -142,9 +142,9 @@ impl SafetyController {
         py: Python<'py>,
         state_values: Vec<f64>,
     ) -> PyResult<Py<PyDict>> {
-        let result = PyDict::new_bound(py);
+        let result = PyDict::new(py);
         for barrier in &self.barriers {
-            let status = PyDict::new_bound(py);
+            let status = PyDict::new(py);
             status.set_item("value", barrier.evaluate(&state_values))?;
             status.set_item("margin", barrier.margin(&state_values))?;
             status.set_item("safe", barrier.is_safe(&state_values))?;

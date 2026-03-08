@@ -67,8 +67,8 @@ impl SpectralAnalyzer {
         let s: Vec<f64> = sig.iter().copied().collect();
         let (freqs, mags) = self.compute_spectrum(&s);
         Ok((
-            Array1::from_vec(freqs).into_pyarray_bound(py).unbind(),
-            Array1::from_vec(mags).into_pyarray_bound(py).unbind(),
+            Array1::from_vec(freqs).into_pyarray(py).unbind(),
+            Array1::from_vec(mags).into_pyarray(py).unbind(),
         ))
     }
 
@@ -82,8 +82,8 @@ impl SpectralAnalyzer {
         let fr = self.freq_resolution.max(1e-10);
         let psd: Vec<f64> = mags.iter().map(|m| m * m / fr).collect();
         Ok((
-            Array1::from_vec(freqs).into_pyarray_bound(py).unbind(),
-            Array1::from_vec(psd).into_pyarray_bound(py).unbind(),
+            Array1::from_vec(freqs).into_pyarray(py).unbind(),
+            Array1::from_vec(psd).into_pyarray(py).unbind(),
         ))
     }
 
@@ -96,8 +96,8 @@ impl SpectralAnalyzer {
         let n = sig.len();
         if n == 0 {
             return Ok((
-                Array1::from_vec(vec![]).into_pyarray_bound(py).unbind(),
-                Array1::from_vec(vec![]).into_pyarray_bound(py).unbind(),
+                Array1::from_vec(vec![]).into_pyarray(py).unbind(),
+                Array1::from_vec(vec![]).into_pyarray(py).unbind(),
             ));
         }
 
@@ -133,8 +133,8 @@ impl SpectralAnalyzer {
 
         let (freqs, mags) = self.compute_spectrum(&centered);
         Ok((
-            Array1::from_vec(freqs).into_pyarray_bound(py).unbind(),
-            Array1::from_vec(mags).into_pyarray_bound(py).unbind(),
+            Array1::from_vec(freqs).into_pyarray(py).unbind(),
+            Array1::from_vec(mags).into_pyarray(py).unbind(),
         ))
     }
 
@@ -147,7 +147,7 @@ impl SpectralAnalyzer {
         let sig: Vec<f64> = signal.as_array().iter().copied().collect();
         let (freqs, mags) = self.compute_spectrum(&sig);
 
-        let dict = PyDict::new_bound(py);
+        let dict = PyDict::new(py);
         for order in 1..=6u32 {
             let target = order as f64 * shaft_freq;
             let idx = freqs
@@ -175,7 +175,7 @@ impl SpectralAnalyzer {
         let power: Vec<f64> = mags.iter().map(|m| m * m).collect();
         let total_power: f64 = power.iter().sum::<f64>() + 1e-10;
 
-        let dict = PyDict::new_bound(py);
+        let dict = PyDict::new(py);
 
         // Peak
         let (peak_idx, peak_mag) = mags
@@ -254,7 +254,7 @@ impl SpectralAnalyzer {
         let bpfi = (n_balls as f64 / 2.0) * shaft_freq * (1.0 + ratio * cos_angle);
         let bsf = (pitch_dia / (2.0 * ball_dia)) * shaft_freq * (1.0 - (ratio * cos_angle).powi(2));
         let ftf = (shaft_freq / 2.0) * (1.0 - ratio * cos_angle);
-        let dict = PyDict::new_bound(py);
+        let dict = PyDict::new(py);
         dict.set_item("BPFO", bpfo)?;
         dict.set_item("BPFI", bpfi)?;
         dict.set_item("BSF", bsf)?;

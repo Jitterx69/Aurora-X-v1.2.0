@@ -153,7 +153,7 @@ impl RotatingMachineryDynamics {
             *u.as_array().get(1).unwrap_or(&0.0),
         ];
         let result = dynamics(&s, t, &ctrl, &self.params);
-        Ok(result.into_pyarray_bound(py).unbind())
+        Ok(result.into_pyarray(py).unbind())
     }
 }
 
@@ -211,7 +211,7 @@ impl PhysicsEngine {
         asset.state = new_state;
         asset.time += self.dt;
 
-        let dict = PyDict::new_bound(py);
+        let dict = PyDict::new(py);
         dict.set_item("theta", asset.state[0])?;
         dict.set_item("shaft_speed", asset.state[1])?;
         dict.set_item("bearing_temp", asset.state[2])?;
