@@ -79,8 +79,7 @@ jobs:
             - name: Audit Rust dependencies
               working-directory: aurora_core
               run: |
-                  cargo metadata --format-version 1 > /dev/null
-                  cargo audit --config audit.toml --deny warnings
+                  cargo audit --deny warnings
 
     go-vuln-check:
         name: Go Vulnerability Check

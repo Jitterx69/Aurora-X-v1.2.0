@@ -24,8 +24,9 @@ static INIT: Once = Once::new();
 #[pyfunction]
 fn init_tracing(endpoint: Option<String>) -> PyResult<()> {
     INIT.call_once(|| {
-        use opentelemetry::{global, sdk::propagation::TraceContextPropagator};
+        use opentelemetry::global;
         use opentelemetry_otlp::WithExportConfig;
+        use opentelemetry_sdk::propagation::TraceContextPropagator;
         use tracing_subscriber::prelude::*;
 
         let endpoint = endpoint.unwrap_or_else(|| "http://jaeger:4317".to_string());
@@ -44,7 +45,7 @@ fn init_tracing(endpoint: Option<String>) -> PyResult<()> {
                     "aurora-x-rust-core",
                 )]),
             ))
-            .install_batch(opentelemetry::runtime::Tokio)
+            .install_batch(opentelemetry_sdk::runtime::Tokio)
             .expect("Failed to initialize tracer");
 
         global::set_text_map_propagator(TraceContextPropagator::new());

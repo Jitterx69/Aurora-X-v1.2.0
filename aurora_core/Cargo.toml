@@ -17,6 +17,7 @@ rustfft = "6.2"
 num-complex = "0.4"
 rayon = "1.10"
 tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter", "registry"] }
 tracing-opentelemetry = "0.22"
 opentelemetry = "0.21"
 opentelemetry-otlp = { version = "0.14", features = ["tonic"] }
