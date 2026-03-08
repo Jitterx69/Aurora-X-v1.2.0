@@ -23,7 +23,7 @@ RUN cd aurora_core && maturin build --release --out /wheels
 
 # Build Go services
 COPY services/ ./services/
-RUN cd services && go mod download && go mod verify && \
+RUN cd services && go mod tidy && go mod download && go mod verify && \
     CGO_ENABLED=0 go build -ldflags="-s -w" -o /app/aurora-services ./cmd/aurora-services
 
 # Copy Python requirements for the final layer
