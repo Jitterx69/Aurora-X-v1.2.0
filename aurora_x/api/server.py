@@ -57,12 +57,13 @@ def create_app(platform) -> FastAPI:
         version="1.0.0",
     )
 
-    # CORS
+    # CORS - Restricted origins for Zero Trust security
+    allowed_origins = os.getenv("AURORA_ALLOWED_ORIGINS", "http://localhost:3000,http://127.0.0.1:3000").split(",")
     app.add_middleware(
         CORSMiddleware,
-        allow_origins=["*"],
+        allow_origins=allowed_origins,
         allow_credentials=True,
-        allow_methods=["*"],
+        allow_methods=["GET", "POST", "PUT", "DELETE"],
         allow_headers=["*"],
     )
 

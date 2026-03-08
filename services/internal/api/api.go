@@ -40,7 +40,11 @@ func NewServer(logger *zap.Logger, port int) *Server {
 		broadcastCh: make(chan []byte, 1024),
 		startTime:   time.Now(),
 		upgrader: websocket.Upgrader{
-			CheckOrigin: func(r *http.Request) bool { return true },
+			CheckOrigin: func(r *http.Request) bool {
+				// Prevent CSWH by validating the origin against the host.
+				// In production, this should check against a strict whitelist.
+				return r.Header.Get("Origin") == "http://"+r.Host || r.Header.Get("Origin") == "https://"+r.Host
+			},
 			ReadBufferSize:  1024,
 			WriteBufferSize: 4096,
 		},

@@ -52,10 +52,9 @@ class ModelRegistry:
         if TORCH_AVAILABLE and hasattr(model, "state_dict"):
             torch.save(model.state_dict(), filepath)
         else:
-            # Fallback: pickle
-            import pickle
-            with open(filepath, "wb") as f:
-                pickle.dump(model, f)
+            # Prevent potential RCE by removing the pickle fallback.
+            # Models must be torch-compatible or saved via safe formats like JSON/Parquet.
+            raise ValueError(f"Insecure serialization detected. Model '{name}' is not a torch state_dict.")
 
         entry = {
             "version": version,
@@ -91,9 +90,7 @@ class ModelRegistry:
             model.load_state_dict(state_dict)
             return model
         else:
-            import pickle
-            with open(filepath, "rb") as f:
-                return pickle.load(f)
+            raise ValueError(f"Insecure deserialization blocked for model '{name}'. Use weights_only=True via torch.")
 
     def list_models(self) -> Dict[str, Any]:
         return self._manifest.get("models", {})
