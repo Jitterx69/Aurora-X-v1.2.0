@@ -69,7 +69,8 @@ impl WeibullModel {
             .iter()
             .map(|&tv| (self.shape / self.scale) * (tv / self.scale).powf(self.shape - 1.0))
             .collect();
-        Array1::from_vec(rates).into_pyarray(py).unbind()
+        let pyarray: Bound<'py, PyArray1<f64>> = Array1::from_vec(rates).into_pyarray(py);
+        pyarray.unbind()
     }
 }
 
