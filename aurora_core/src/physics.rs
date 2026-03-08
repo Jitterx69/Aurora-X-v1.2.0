@@ -254,7 +254,7 @@ impl PhysicsEngine {
             asset.time += self.dt;
         }
 
-        let dict = PyDict::new_bound(py);
+        let dict = PyDict::new(py);
         dict.set_item("theta", asset.state[0])?;
         dict.set_item("shaft_speed", asset.state[1])?;
         dict.set_item("bearing_temp", asset.state[2])?;
@@ -271,7 +271,7 @@ impl PhysicsEngine {
         let asset = self.assets.get(asset_id).ok_or_else(|| {
             pyo3::exceptions::PyKeyError::new_err(format!("Asset '{}' not found", asset_id))
         })?;
-        Ok(asset.state.clone().into_pyarray_bound(py).unbind())
+        Ok(asset.state.clone().into_pyarray(py).unbind())
     }
 
     fn get_time(&self, asset_id: &str) -> PyResult<f64> {

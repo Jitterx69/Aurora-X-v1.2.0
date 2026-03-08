@@ -271,17 +271,17 @@ impl StreamProcessor {
             return Ok(None);
         }
 
-        let result = PyDict::new_bound(py);
+        let result = PyDict::new(py);
         result.set_item("asset_id", asset_id)?;
         result.set_item("timestamp", timestamp)?;
         result.set_item("window_complete", window_ready)?;
 
-        let feat_dict = PyDict::new_bound(py);
+        let feat_dict = PyDict::new(py);
         for (k, v) in &features {
             feat_dict.set_item(k.as_str(), *v)?;
         }
-        result.set_item("features", &feat_dict)?;
+        result.set_item("features", feat_dict)?;
 
-        Ok(Some(result.unbind()))
+        Ok(Some(result.into()))
     }
 }
