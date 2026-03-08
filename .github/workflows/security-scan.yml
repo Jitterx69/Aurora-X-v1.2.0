@@ -1,0 +1,182 @@
+# AURORA-X - Security Scanning
+# Secret detection -> Dependency audit -> SAST
+name: "Security Scan"
+
+on:
+    push:
+        branches: [main, develop]
+    pull_request:
+        branches: [main, develop]
+    schedule:
+        - cron: "0 6 * * 1"
+
+concurrency:
+    group: security-${{ github.ref }}
+    cancel-in-progress: false
+
+permissions:
+    contents: read
+    security-events: write
+
+jobs:
+    secret-scan:
+        name: Secret Detection
+        runs-on: ubuntu-latest
+        timeout-minutes: 15
+        steps:
+            - name: Checkout repository
+              uses: actions/checkout@v4
+              with:
+                  fetch-depth: 0
+                  persist-credentials: false
+
+            - name: TruffleHog secret scan
+              uses: trufflesecurity/trufflehog@v3.82.13
+              with:
+                  extra_args: --only-verified
+
+            - name: Gitleaks secret scan
+              uses: gitleaks/gitleaks-action@v2
+              env:
+                  GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+    python-audit:
+        name: Python Dependency Audit
+        runs-on: ubuntu-latest
+        timeout-minutes: 10
+        steps:
+            - name: Checkout repository
+              uses: actions/checkout@v4
+              with:
+                  persist-credentials: false
+
+            - name: Setup Python
+              uses: actions/setup-python@v5
+              with:
+                  python-version: "3.11"
+
+            - name: Audit Python dependencies
+              run: |
+                  pip install pip-audit
+                  pip-audit -r requirements.txt --strict
+
+    rust-audit:
+        name: Rust Dependency Audit
+        runs-on: ubuntu-latest
+        timeout-minutes: 15
+        steps:
+            - name: Checkout repository
+              uses: actions/checkout@v4
+              with:
+                  persist-credentials: false
+
+            - name: Install Rust toolchain
+              uses: dtolnay/rust-toolchain@stable
+
+            - name: Install cargo-audit
+              run: cargo install cargo-audit
+
+            - name: Audit Rust dependencies
+              working-directory: aurora_core
+              run: |
+                  cargo metadata --format-version 1 > /dev/null
+                  cargo audit --config audit.toml --deny warnings
+
+    go-vuln-check:
+        name: Go Vulnerability Check
+        runs-on: ubuntu-latest
+        timeout-minutes: 10
+        steps:
+            - name: Checkout repository
+              uses: actions/checkout@v4
+              with:
+                  persist-credentials: false
+
+            - name: Setup Go
+              uses: actions/setup-go@v5
+              with:
+                  go-version: "1.23.6"
+
+            - name: Sync dependencies
+              working-directory: services
+              run: |
+                  go mod tidy
+                  go mod download
+
+            - name: Install govulncheck
+              run: go install golang.org/x/vuln/cmd/govulncheck@latest
+
+            - name: Run govulncheck
+              working-directory: services
+              run: govulncheck ./...
+
+    sast:
+        name: SAST with Semgrep
+        runs-on: ubuntu-latest
+        timeout-minutes: 20
+        container:
+            image: semgrep/semgrep:latest
+        steps:
+            - name: Checkout repository
+              uses: actions/checkout@v4
+              with:
+                  persist-credentials: false
+
+            - name: Run Semgrep
+              uses: returntocorp/semgrep-action@v1
+              with:
+                  config: >-
+                      p/security-audit
+                      p/secrets
+                      p/python
+                      p/golang
+
+            - name: Upload Semgrep results
+              if: always()
+              uses: actions/upload-artifact@v4
+              with:
+                  name: semgrep-results
+                  path: semgrep-results.json
+                  retention-days: 30
+
+    gitignore-verify:
+        name: Verify Sensitive Files Not Tracked
+        runs-on: ubuntu-latest
+        timeout-minutes: 5
+        steps:
+            - name: Checkout repository
+              uses: actions/checkout@v4
+              with:
+                  persist-credentials: false
+
+            - name: Check for tracked sensitive files
+              run: |
+                  echo "Checking for sensitive files that should be gitignored..."
+                  FAIL=0
+                  for pattern in "*.key" "*.pem" ".env" "credentials.json" "*.db" "*.sqlite"; do
+                    FOUND=$(git ls-files "$pattern" 2>/dev/null)
+                    if [ -n "$FOUND" ]; then
+                      echo "SECURITY VIOLATION: Tracked file matches pattern $pattern: $FOUND"
+                      FAIL=1
+                    fi
+                  done
+                  if [ "$FAIL" -eq 1 ]; then
+                    exit 1
+                  fi
+                  echo "No sensitive files found in tracked content"
+
+    dockerfile-lint:
+        name: Dockerfile Security Lint
+        runs-on: ubuntu-latest
+        timeout-minutes: 5
+        steps:
+            - name: Checkout repository
+              uses: actions/checkout@v4
+              with:
+                  persist-credentials: false
+
+            - name: Lint Dockerfile with Hadolint
+              uses: hadolint/hadolint-action@v3.1.0
+              with:
+                  dockerfile: Dockerfile
+                  failure-threshold: error
