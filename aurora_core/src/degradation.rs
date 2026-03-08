@@ -1,7 +1,7 @@
 //! AURORA-X Degradation Models — Weibull & Bayesian RUL
 
 use ndarray::Array1;
-use numpy::{IntoPyArray, PyArray1};
+use numpy::{IntoPyArray, PyArray1, PyReadonlyArray1};
 use pyo3::prelude::*;
 use pyo3::types::PyDict;
 
@@ -67,7 +67,11 @@ impl WeibullModel {
         let rates: Vec<f64> = t
             .as_array()
             .iter()
-            .map(|&tv| (self.shape / self.scale) * (tv / self.scale).powf(self.shape - 1.0))
+            .map(|&tv| {
+                let s = self.shape;
+                let sc = self.scale;
+                (s / sc) * (tv / sc).powf(s - 1.0)
+            })
             .collect();
         let pyarray: Bound<'py, PyArray1<f64>> = Array1::from_vec(rates).into_pyarray(py);
         pyarray.unbind()
