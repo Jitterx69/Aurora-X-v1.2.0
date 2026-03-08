@@ -131,8 +131,9 @@ observability:
     enabled: true
     port: 9090
   tracing:
-    enabled: false
-    endpoint: "http://localhost:4317"
+    enabled: true
+    sample_rate: 1.0
+    endpoint: "http://jaeger:4317"
 
 # --- API ---
 api:

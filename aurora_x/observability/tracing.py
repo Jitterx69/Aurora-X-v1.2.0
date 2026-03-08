@@ -17,15 +17,36 @@ class TracingProvider:
 
         if self.enabled:
             try:
+                import os
                 from opentelemetry import trace
                 from opentelemetry.sdk.trace import TracerProvider
-                from opentelemetry.sdk.trace.export import SimpleSpanProcessor, ConsoleSpanExporter
+                from opentelemetry.sdk.trace.export import BatchSpanProcessor
+                from opentelemetry.exporter.otlp.proto.grpc.trace_exporter import OTLPSpanExporter
+                from opentelemetry.sdk.resources import Resource
 
-                provider = TracerProvider()
-                provider.add_span_processor(SimpleSpanProcessor(ConsoleSpanExporter()))
+                resource = Resource.create({
+                    "service.name": "aurora-x-python-orchestrator",
+                    "service.version": "1.0.0",
+                })
+
+                provider = TracerProvider(resource=resource)
+                otlp_endpoint = os.getenv("JAERGER_OTLP_ENDPOINT", "http://jaeger:4317")
+                
+                processor = BatchSpanProcessor(OTLPSpanExporter(endpoint=otlp_endpoint, insecure=True))
+                provider.add_span_processor(processor)
                 trace.set_tracer_provider(provider)
+                
                 self._tracer = trace.get_tracer("aurora_x")
-                logger.info("OpenTelemetry tracing enabled")
+                
+                # --- Initialize Rust Core Tracing ---
+                try:
+                    import aurora_core
+                    aurora_core.init_tracing(otlp_endpoint)
+                    logger.info("Rust Core tracing initialized")
+                except (ImportError, AttributeError) as e:
+                    logger.warning("Could not initialize Rust Core tracing: %s", e)
+
+                logger.info("OpenTelemetry tracing enabled (endpoint: %s)", otlp_endpoint)
             except ImportError:
                 logger.warning("OpenTelemetry not available. Tracing disabled.")
                 self.enabled = False

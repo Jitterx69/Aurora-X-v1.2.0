@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/gorilla/websocket"
+	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
 	"go.uber.org/zap"
 )
 
@@ -73,7 +74,10 @@ func (s *Server) Start() error {
 	certFile := "certs/server.crt"
 	keyFile := "certs/server.key"
 	
-	return http.ListenAndServeTLS(addr, certFile, keyFile, mux)
+	// Wrap mux with OpenTelemetry instrumentation
+	handler := otelhttp.NewHandler(mux, "aurora-api")
+
+	return http.ListenAndServeTLS(addr, certFile, keyFile, handler)
 }
 
 // Broadcast sends data to all connected WebSocket clients.

@@ -16,6 +16,12 @@ nalgebra = "0.33"
 rustfft = "6.2"
 num-complex = "0.4"
 rayon = "1.10"
+tracing = "0.1"
+tracing-opentelemetry = "0.22"
+opentelemetry = { version = "0.21", features = ["rt-tokio"] }
+opentelemetry-otlp = "0.14"
+opentelemetry_sdk = { version = "0.21", features = ["rt-tokio"] }
+tokio = { version = "1.36", features = ["rt", "macros"] }
 
 [profile.release]
 opt-level = 3

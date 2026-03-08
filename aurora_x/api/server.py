@@ -17,6 +17,14 @@ from fastapi.responses import HTMLResponse
 from pathlib import Path
 import os
 
+from opentelemetry import trace
+from opentelemetry.sdk.resources import Resource
+from opentelemetry.sdk.trace import TracerProvider
+from opentelemetry.sdk.trace.export import BatchSpanProcessor
+from opentelemetry.exporter.otlp.proto.grpc.trace_exporter import OTLPSpanExporter
+from opentelemetry.instrumentation.fastapi import FastAPIInstrumentor
+from opentelemetry.instrumentation.httpx import HTTPXClientInstrumentor
+
 logger = logging.getLogger("aurora_x.api.server")
 
 
@@ -70,6 +78,30 @@ def create_app(platform) -> FastAPI:
     # Subsystem instances for API
     ws_manager = ConnectionManager()
     shell_executor = ShellExecutor()
+
+    # ============ OpenTelemetry Setup ============
+    if os.getenv("AURORA_TRACING_ENABLED", "true").lower() == "true":
+        resource = Resource.create({
+            "service.name": "aurora-x-python-api",
+            "service.version": "1.0.0",
+            "deployment.environment": os.getenv("AURORA_MODE", "development"),
+        })
+        
+        provider = TracerProvider(resource=resource)
+        
+        # Jaeger OTLP gRPC endpoint (default matches our docker-compose jaeger service)
+        otlp_endpoint = os.getenv("JAERGER_OTLP_ENDPOINT", "http://jaeger:4317")
+        processor = BatchSpanProcessor(OTLPSpanExporter(endpoint=otlp_endpoint, insecure=True))
+        provider.add_span_processor(processor)
+        
+        trace.set_tracer_provider(provider)
+        
+        # FastAPII nstrumentation
+        FastAPIInstrumentor.instrument_app(app)
+        # Outgoing HTTPX instrumentation (for calling Go Gateway)
+        HTTPXClientInstrumentor().instrument()
+        
+        logger.info("OpenTelemetry tracing initialized (endpoint: %s)", otlp_endpoint)
 
     # Serve dashboard static files
     dashboard_path = Path(__file__).parent.parent.parent / "dashboard"

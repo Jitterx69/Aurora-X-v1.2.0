@@ -61,6 +61,7 @@ impl ExtendedKalmanFilter {
     }
 
     #[pyo3(signature = (f_jacobian=None, dt=None))]
+    #[tracing::instrument(skip(self, f_jacobian))]
     fn predict(
         &mut self,
         f_jacobian: Option<PyReadonlyArray2<'_, f64>>,
@@ -77,6 +78,7 @@ impl ExtendedKalmanFilter {
     }
 
     #[pyo3(signature = (z, h_jacobian=None))]
+    #[tracing::instrument(skip(self, z, h_jacobian))]
     fn update(
         &mut self,
         z: PyReadonlyArray1<'_, f64>,
@@ -194,6 +196,7 @@ impl UnscentedKalmanFilter {
     }
 
     #[pyo3(signature = (dt=None))]
+    #[tracing::instrument(skip(self))]
     fn predict(&mut self, #[allow(unused)] dt: Option<f64>) -> PyResult<()> {
         let sigma = self.gen_sigma_points();
         let mut x_mean: Array1<f64> = Array1::zeros(self.state_dim);
@@ -214,6 +217,7 @@ impl UnscentedKalmanFilter {
         Ok(())
     }
 
+    #[tracing::instrument(skip(self, z))]
     fn update(&mut self, z: PyReadonlyArray1<'_, f64>) -> PyResult<()> {
         let z_arr = z.as_array().to_owned();
         let sigma = self.gen_sigma_points();

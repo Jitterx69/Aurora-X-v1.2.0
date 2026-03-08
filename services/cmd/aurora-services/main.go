@@ -18,12 +18,78 @@ import (
 	"aurora-x/services/internal/broker"
 	"aurora-x/services/internal/eventlog"
 	"aurora-x/services/internal/gateway"
+
+	"context"
+	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracegrpc"
+	"go.opentelemetry.io/otel/propagation"
+	"go.opentelemetry.io/otel/sdk/resource"
+	sdktrace "go.opentelemetry.io/otel/sdk/trace"
+	semconv "go.opentelemetry.io/otel/semconv/v1.17.0"
+	"time"
+
+	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials/insecure"
 )
+
+func initTracer(ctx context.Context, logger *zap.Logger) (func(context.Context) error, error) {
+	endpoint := os.Getenv("JAEGER_OTLP_ENDPOINT")
+	if endpoint == "" {
+		endpoint = "jaeger:4317"
+	}
+
+	logger.Info("Initializing OTLP Tracer", zap.String("endpoint", endpoint))
+
+	res, err := resource.New(ctx,
+		resource.WithAttributes(
+			semconv.ServiceNameKey.String("aurora-x-go-services"),
+			semconv.ServiceVersionKey.String("0.1.0"),
+			semconv.DeploymentEnvironmentKey.String(os.Getenv("AURORA_MODE")),
+		),
+	)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create resource: %w", err)
+	}
+
+	exporter, err := otlptracegrpc.New(ctx,
+		otlptracegrpc.WithEndpoint(endpoint),
+		otlptracegrpc.WithInsecure(),
+		otlptracegrpc.WithDialOption(grpc.WithBlock()),
+	)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create trace exporter: %w", err)
+	}
+
+	tp := sdktrace.NewTracerProvider(
+		sdktrace.WithBatcher(exporter),
+		sdktrace.WithResource(res),
+	)
+	otel.SetTracerProvider(tp)
+	otel.SetTextMapPropagator(propagation.NewCompositeTextMapPropagator(propagation.TraceContext{}, propagation.Baggage{}))
+
+	return tp.Shutdown, nil
+}
 
 func main() {
 	// Structured logger
 	logger, _ := zap.NewProduction()
 	defer logger.Sync()
+
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	if os.Getenv("AURORA_TRACING_ENABLED") != "false" {
+		shutdown, err := initTracer(ctx, logger)
+		if err != nil {
+			logger.Error("failed to initialize tracer", zap.Error(err))
+		} else {
+			defer func() {
+				if err := shutdown(context.Background()); err != nil {
+					logger.Error("failed to shutdown tracer", zap.Error(err))
+				}
+			}()
+		}
+	}
 
 	logger.Info("AURORA-X Go Services starting",
 		zap.String("version", "0.1.0"))
