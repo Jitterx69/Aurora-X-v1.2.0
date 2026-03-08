@@ -35,6 +35,11 @@ jobs:
               with:
                   extra_args: --only-verified
 
+            - name: Gitleaks secret scan
+              uses: gitleaks/gitleaks-action@v2
+              env:
+                  GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
     python-audit:
         name: Python Dependency Audit
         runs-on: ubuntu-latest
@@ -53,7 +58,7 @@ jobs:
             - name: Audit Python dependencies
               run: |
                   pip install pip-audit
-                  pip-audit -r requirements.txt --desc || true
+                  pip-audit -r requirements.txt --strict
 
     rust-audit:
         name: Rust Dependency Audit
@@ -73,7 +78,7 @@ jobs:
 
             - name: Audit Rust dependencies
               working-directory: aurora_core
-              run: cargo audit || true
+              run: cargo audit --deny warnings
 
     go-vuln-check:
         name: Go Vulnerability Check
@@ -95,7 +100,7 @@ jobs:
 
             - name: Run govulncheck
               working-directory: services
-              run: govulncheck ./... || true
+              run: govulncheck ./...
 
     sast:
         name: SAST with Semgrep
@@ -110,13 +115,13 @@ jobs:
                   persist-credentials: false
 
             - name: Run Semgrep
-              run: |
-                  semgrep scan \
-                    --config auto \
-                    --config p/security-audit \
-                    --config p/secrets \
-                    --json --output semgrep-results.json \
-                    aurora_x/ services/ aurora_core/src/ scripts/ config/ || true
+              uses: returntocorp/semgrep-action@v1
+              with:
+                  config: >-
+                      p/security-audit
+                      p/secrets
+                      p/python
+                      p/golang
 
             - name: Upload Semgrep results
               if: always()
