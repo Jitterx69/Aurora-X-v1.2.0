@@ -29,7 +29,6 @@ import (
 	"time"
 
 	"google.golang.org/grpc"
-	"google.golang.org/grpc/credentials/insecure"
 )
 
 func initTracer(ctx context.Context, logger *zap.Logger) (func(context.Context) error, error) {
