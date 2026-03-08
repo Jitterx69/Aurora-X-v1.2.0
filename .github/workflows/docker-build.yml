@@ -77,7 +77,7 @@ jobs:
               with:
                   image-ref: aurora-x:scan-target
                   format: table
-                  exit-code: 0
+                  exit-code: 1
                   severity: CRITICAL,HIGH
                   ignore-unfixed: true
 
