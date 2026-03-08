@@ -35,28 +35,34 @@ type wsClient struct {
 
 // NewServer creates a new API server.
 func NewServer(logger *zap.Logger, port int) *Server {
-	return &Server{
+	s := &Server{
 		logger:      logger,
 		port:        port,
 		broadcastCh: make(chan []byte, 1024),
 		startTime:   time.Now(),
-		upgrader: websocket.Upgrader{
-			CheckOrigin: func(r *http.Request) bool {
-				// SEC-AUDIT-FIX: Explicitly validate origin to prevent Cross-Site WebSocket Hijacking (CSWSH).
-				// We only allow trusted local origins in development and maintenance modes.
-				origin := r.Header.Get("Origin")
-				if origin == "" {
-					return false
-				}
-				// Strictly allow only trusted local dev origins.
-				allowed := origin == "http://localhost:3000" || 
-					       origin == "http://127.0.0.1:3000" ||
-					       origin == "http://localhost:8000"
-				return allowed
-			},
-			ReadBufferSize:  1024,
-			WriteBufferSize: 4096,
-		},
+	}
+	s.upgrader = websocket.Upgrader{
+		CheckOrigin:     s.checkOrigin,
+		ReadBufferSize:  1024,
+		WriteBufferSize: 4096,
+	}
+	return s
+}
+
+func (s *Server) checkOrigin(r *http.Request) bool {
+	// SEC-CHECK: Explicit origin validation to prevent Cross-Site WebSocket Hijacking (CSWSH).
+	origin := r.Header.Get("Origin")
+	if origin == "" {
+		return false
+	}
+
+	// Strictly allow only trusted origins.
+	switch origin {
+	case "http://localhost:3000", "http://127.0.0.1:3000", "http://localhost:8000":
+		return true
+	default:
+		s.logger.Warn("rejected websocket origin", zap.String("origin", origin))
+		return false
 	}
 }
 
