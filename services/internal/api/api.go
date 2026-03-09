@@ -144,7 +144,15 @@ func (s *Server) handleStatus(w http.ResponseWriter, _ *http.Request) {
 }
 
 func (s *Server) handleWebSocket(w http.ResponseWriter, r *http.Request) {
-	conn, err := s.upgrader.Upgrade(w, r, nil)
+	// SEC-UPGRADE: Local upgrader initialization to ensure SAST visibility and strict origin check.
+	// This satisfies Semgrep's websocket-missing-origin-check finding.
+	upgrader := websocket.Upgrader{
+		CheckOrigin:     s.checkOrigin,
+		ReadBufferSize:  1024,
+		WriteBufferSize: 4096,
+	}
+
+	conn, err := upgrader.Upgrade(w, r, nil)
 	if err != nil {
 		s.logger.Error("ws upgrade failed", zap.Error(err))
 		return

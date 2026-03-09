@@ -11,8 +11,8 @@ RUN apt-get update && \
     && pip3 install --break-system-packages --no-cache-dir maturin \
     && rm -rf /var/lib/apt/lists/*
 
-# Install Go 1.23.4 (latest secure)
-COPY --from=golang:1.23.4-bookworm /usr/local/go/ /usr/local/go/
+# Install Go 1.25.8 (latest secure)
+COPY --from=golang:1.25.8-bookworm /usr/local/go/ /usr/local/go/
 ENV PATH="/usr/local/go/bin:${PATH}"
 
 WORKDIR /build
